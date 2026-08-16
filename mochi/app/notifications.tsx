@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,10 +6,16 @@ import {
   Pressable,
   ScrollView,
   Platform,
+  Modal,
+  LogBox,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { FontAwesome } from "@expo/vector-icons";
+import { Video, ResizeMode, Audio } from "expo-av";
+
+// Suppress benign expo-av deprecation warning log
+LogBox.ignoreLogs(["Video component from `expo-av` is deprecated", "[expo-av]: Video component"]);
 import Svg, {
   Path,
   Circle,
@@ -19,7 +25,6 @@ import Svg, {
   RadialGradient,
   Stop,
   G,
-  Text as SvgText,
 } from "react-native-svg";
 
 // Custom SVG Component: 3 Hugging Mochis with different expressions
@@ -145,6 +150,20 @@ function ThreeHuggingMochis() {
 
 export default function Notifications() {
   const router = useRouter();
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const videoRef = useRef<Video>(null);
+
+  useEffect(() => {
+    if (showVideoModal) {
+      Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        playThroughEarpieceAndroid: false,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+      }).catch((e) => console.warn("Audio mode error for promo video:", e));
+    }
+  }, [showVideoModal]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
@@ -174,6 +193,12 @@ export default function Notifications() {
             <ThreeHuggingMochis />
           </View>
 
+          {/* Super Cute Video Play Button */}
+          <Pressable style={styles.watchVideoBtn} onPress={() => setShowVideoModal(true)}>
+            <FontAwesome name="play-circle" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.watchVideoText}>Watch Mochi Friends Promo Video</Text>
+          </Pressable>
+
           <View style={styles.notifyMeBtn}>
             <FontAwesome name="heart" size={14} color="#7D7AF2" style={{ marginRight: 6 }} />
             <Text style={styles.notifyMeText}>Stay tuned — Friends feature arriving soon!</Text>
@@ -196,6 +221,10 @@ export default function Notifications() {
             <Text style={styles.notifSub}>
               Mochi is not meant to be alone, Mochi needs friends! Connect, chat and compete with your friends on Mochi.
             </Text>
+            <Pressable style={styles.inlinePlayBtn} onPress={() => setShowVideoModal(true)}>
+              <FontAwesome name="play" size={11} color="#7D7AF2" style={{ marginRight: 5 }} />
+              <Text style={styles.inlinePlayBtnText}>Watch Teaser Video</Text>
+            </Pressable>
             <Text style={styles.notifTime}>Just now</Text>
           </View>
         </View>
@@ -228,6 +257,42 @@ export default function Notifications() {
           </View>
         </View>
       </ScrollView>
+
+      {/* PROMO VIDEO PLAYBACK MODAL */}
+      <Modal visible={showVideoModal} animationType="slide" transparent>
+        <View style={styles.videoModalOverlay}>
+          <View style={styles.videoModalCard}>
+            <View style={styles.videoModalHeader}>
+              <View style={styles.videoHeaderTitleRow}>
+                <FontAwesome name="film" size={16} color="#7D7AF2" />
+                <Text style={styles.videoModalTitle}>Mochi Friends Teaser</Text>
+              </View>
+              <Pressable style={styles.closeVideoBtn} onPress={() => setShowVideoModal(false)}>
+                <FontAwesome name="times" size={18} color="#8A8A8A" />
+              </Pressable>
+            </View>
+
+            {/* Video Player */}
+            <View style={styles.videoPlayerContainer}>
+              <Video
+                ref={videoRef}
+                source={require("../assets/videos/Mochi_Friends.mp4")}
+                style={styles.videoPlayer}
+                useNativeControls
+                resizeMode={ResizeMode.CONTAIN}
+                isLooping
+                shouldPlay={showVideoModal}
+                volume={1.0}
+                isMuted={false}
+              />
+            </View>
+
+            <Pressable style={styles.closeModalBarBtn} onPress={() => setShowVideoModal(false)}>
+              <Text style={styles.closeModalBarBtnText}>Done Watching</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -292,6 +357,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginVertical: 4,
   },
+  watchVideoBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#7D7AF2",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+    marginTop: 12,
+    width: "100%",
+    shadowColor: "#7D7AF2",
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  watchVideoText: { color: "#fff", fontSize: 14, fontWeight: "800" },
   notifyMeBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -346,5 +428,83 @@ const styles = StyleSheet.create({
     backgroundColor: "#7D7AF2",
   },
   notifSub: { fontSize: 12, color: "#6A6A7A", marginTop: 3, lineHeight: 17 },
+  inlinePlayBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0EAFF",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: "#DCD0FF",
+  },
+  inlinePlayBtnText: { fontSize: 11, fontWeight: "700", color: "#7D7AF2" },
   notifTime: { fontSize: 11, color: "#A0A0A0", marginTop: 6 },
+
+  // Promo Video Modal
+  videoModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  videoModalCard: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 18,
+    width: "100%",
+    maxWidth: 380,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  videoModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 12,
+  },
+  videoHeaderTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  videoModalTitle: {
+    fontFamily: "BubblegumSans_400Regular",
+    fontSize: 20,
+    color: "#3A3A3A",
+  },
+  closeVideoBtn: {
+    padding: 4,
+  },
+  videoPlayerContainer: {
+    width: "100%",
+    height: 240,
+    backgroundColor: "#000",
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 14,
+  },
+  videoPlayer: {
+    width: "100%",
+    height: "100%",
+  },
+  closeModalBarBtn: {
+    backgroundColor: "#7D7AF2",
+    borderRadius: 16,
+    paddingVertical: 12,
+    width: "100%",
+    alignItems: "center",
+  },
+  closeModalBarBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 15,
+  },
 });

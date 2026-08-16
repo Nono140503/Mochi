@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useFonts, BubblegumSans_400Regular } from "@expo-google-fonts/bubblegum-sans";
 import * as SplashScreen from "expo-splash-screen";
@@ -20,6 +20,7 @@ export default function RootLayout() {
 
   const router = useRouter();
   const segments = useSegments();
+  const splashHiddenRef = useRef(false);
 
   useEffect(() => {
     hydrate();
@@ -28,8 +29,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (!hydrated || !fontsLoaded) return;
 
-    // Smoothly hide native Splash Screen
-    SplashScreen.hideAsync().catch(() => {});
+    // Safely hide native Splash Screen once ready
+    if (!splashHiddenRef.current) {
+      splashHiddenRef.current = true;
+      SplashScreen.hideAsync().catch(() => {});
+    }
 
     const currentScreen = segments[0];
 

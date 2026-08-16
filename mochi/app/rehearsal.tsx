@@ -2,14 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   StyleSheet,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
-  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -17,8 +13,15 @@ import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
 import { FontAwesome } from "@expo/vector-icons";
 import MochiBody from "../components/MochiBody";
-import { sendToMochi, ChatMessage, transcribeAudio, synthesizeVoice, speakMochiText, extractMood } from "../lib/api";
+import { sendToMochi, ChatMessage, transcribeAudio, speakMochiText, extractMood } from "../lib/api";
 import { useMochiStore, MochiMood } from "../store/mochiStore";
+
+import RehearsalSetupView from "../components/rehearsal/RehearsalSetupView";
+import RehearsalHeader from "../components/rehearsal/RehearsalHeader";
+import RehearsalMessageList from "../components/rehearsal/RehearsalMessageList";
+import RehearsalInputBar from "../components/rehearsal/RehearsalInputBar";
+import RehearsalFinishedCard from "../components/rehearsal/RehearsalFinishedCard";
+import RehearsalVoiceModal from "../components/rehearsal/RehearsalVoiceModal";
 
 export default function Rehearsal() {
   const router = useRouter();
@@ -36,8 +39,6 @@ export default function Rehearsal() {
 
   // Voice Chat States
   const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceModeActive, setVoiceModeActive] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<"idle" | "listening" | "processing" | "speaking">("idle");
   const [liveTranscript, setLiveTranscript] = useState("");
@@ -57,13 +58,11 @@ export default function Rehearsal() {
 
   const speakText = async (text: string, onFinish?: () => void) => {
     if (!text) return;
-    setIsSpeaking(true);
     if (voiceModeActive) setVoiceStatus("speaking");
 
     await speakMochiText(
       text,
       () => {
-        setIsSpeaking(false);
         if (voiceModeActive) setVoiceStatus("idle");
         if (onFinish) onFinish();
       },
@@ -173,7 +172,6 @@ export default function Rehearsal() {
     recordingRef.current = null;
     setIsRecording(false);
     setVoiceStatus("processing");
-    setIsTranscribing(true);
 
     try {
       const status = await rec.getStatusAsync();
@@ -188,7 +186,6 @@ export default function Rehearsal() {
           reader.onloadend = async () => {
             const base64Audio = reader.result?.toString().split(",")[1];
             const transcribedText = await transcribeAudio(base64Audio);
-            setIsTranscribing(false);
             if (transcribedText) {
               await send(transcribedText);
             } else {
@@ -201,7 +198,6 @@ export default function Rehearsal() {
     } catch (err) {
       console.warn("Failed to transcribe:", err);
     }
-    setIsTranscribing(false);
     setVoiceStatus("idle");
   };
 
@@ -246,46 +242,19 @@ export default function Rehearsal() {
 
   if (!setupDone) {
     return (
-      <SafeAreaView style={styles.setupContainer}>
-        <View style={styles.topNav}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <FontAwesome name="arrow-left" size={18} color="#3A3A3A" />
-          </Pressable>
-        </View>
-        <ScrollView contentContainerStyle={styles.setupScroll}>
-          <MochiBody mood="curled" baseColor={baseColor} size={170} />
-          <Text style={styles.setupTitle}>Rehearsal Mode</Text>
-          <Text style={styles.setupLabel}>
-            Who do you need to practice talking to, and what's the situation? Describe the person's personality
-          </Text>
-          <TextInput
-            style={styles.setupInput}
-            placeholder="e.g. My roommate, about splitting rent unfairly. She gets defensive fast."
-            placeholderTextColor="#B0A9C7"
-            value={personaDescription}
-            onChangeText={setPersonaDescription}
-            multiline
-            numberOfLines={4}
-          />
-          <Pressable style={styles.startBtn} onPress={startRehearsal}>
-            <Text style={styles.startBtnText}>Start Rehearsal 🎭</Text>
-          </Pressable>
-        </ScrollView>
-      </SafeAreaView>
+      <RehearsalSetupView
+        baseColor={baseColor}
+        personaDescription={personaDescription}
+        setPersonaDescription={setPersonaDescription}
+        onStart={startRehearsal}
+        onBack={() => router.back()}
+      />
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <FontAwesome name="arrow-left" size={18} color="#3A3A3A" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Rehearsal Mode</Text>
-        <Pressable style={styles.resetBtn} onPress={handleReset}>
-          <Text style={styles.resetBtnText}>New</Text>
-        </Pressable>
-      </View>
+      <RehearsalHeader onBack={() => router.back()} onReset={handleReset} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -296,231 +265,67 @@ export default function Rehearsal() {
           <MochiBody mood={mochiMood} baseColor={baseColor} size={140} />
         </View>
 
-        {/* Live Voice Conversation Launcher Banner */}
         <Pressable style={styles.voiceBannerBtn} onPress={openVoiceMode}>
           <FontAwesome name="microphone" size={16} color="#fff" />
           <Text style={styles.voiceBannerText}>Start Live Voice Rehearsal ✨</Text>
         </Pressable>
 
-        <ScrollView contentContainerStyle={styles.chatScroll}>
-          {messages.map((m, i) => {
-            if (m.content.startsWith("[SETUP")) return null;
-            const isUser = m.role === "user";
-            return (
-              <View
-                key={i}
-                style={[
-                  styles.msgBubble,
-                  isUser ? styles.msgUser : styles.msgAssistant,
-                ]}
-              >
-                <Text style={isUser ? styles.msgTextUser : styles.msgTextAssistant}>
-                  {m.content}
-                </Text>
-              </View>
-            );
-          })}
-          {loading && (
-            <View style={styles.loadingBubble}>
-              <ActivityIndicator color="#7D7AF2" />
-              <Text style={styles.loadingText}>Roleplay partner is thinking...</Text>
-            </View>
-          )}
-        </ScrollView>
+        <RehearsalMessageList messages={messages} loading={loading} />
 
         {!finished ? (
-          <View style={styles.footer}>
-            <View style={styles.inputRow}>
-              <TextInput
-                style={styles.input}
-                placeholder="Say what you'd say..."
-                placeholderTextColor="#B0A9C7"
-                value={input}
-                onChangeText={setInput}
-                onSubmitEditing={() => send()}
-              />
-              <Pressable
-                style={[styles.micBtn, isRecording && styles.micBtnActive]}
-                onPress={isRecording ? stopRecordingInVoiceMode : startRecordingInVoiceMode}
-              >
-                <FontAwesome name={isRecording ? "stop" : "microphone"} size={16} color="#fff" />
-              </Pressable>
-              <Pressable style={styles.sendBtn} onPress={() => send()}>
-                <FontAwesome name="paper-plane" size={16} color="#fff" />
-              </Pressable>
-            </View>
-            <Pressable style={styles.endBtn} onPress={handleEndRehearsal}>
-              <Text style={styles.endBtnText}>End Rehearsal & Reflect</Text>
-            </Pressable>
-          </View>
+          <RehearsalInputBar
+            input={input}
+            setInput={setInput}
+            isRecording={isRecording}
+            onSend={() => send()}
+            onToggleRecording={isRecording ? stopRecordingInVoiceMode : startRecordingInVoiceMode}
+            onEndRehearsal={handleEndRehearsal}
+          />
         ) : (
-          <View style={styles.finishedCard}>
-            <Text style={styles.finishedTitle}>Great practice session! 🌟</Text>
-            <Text style={styles.finishedSub}>
-              How did that feel? Rehearsing tough conversations builds emotional confidence.
-            </Text>
-            <Pressable style={styles.startBtn} onPress={handleReset}>
-              <Text style={styles.startBtnText}>Practice Another Conversation</Text>
-            </Pressable>
-          </View>
+          <RehearsalFinishedCard onRestart={handleReset} />
         )}
       </KeyboardAvoidingView>
 
-      {/* ChatGPT-style Live Voice Mode Modal */}
-      <Modal visible={voiceModeActive} animationType="slide" transparent>
-        <View style={styles.voiceModalContainer}>
-          <SafeAreaView style={{ flex: 1 }}>
-            <ScrollView
-              contentContainerStyle={styles.voiceModalScroll}
-              showsVerticalScrollIndicator={false}
-            >
-              <Pressable style={styles.closeVoiceBtn} onPress={closeVoiceMode}>
-                <FontAwesome name="times" size={20} color="#fff" />
-              </Pressable>
-
-              <View style={styles.voiceModalMochi}>
-                <MochiBody mood={mochiMood} baseColor={baseColor} size={220} />
-              </View>
-
-              <Text style={styles.voiceStatusTitle}>
-                {voiceStatus === "listening" && "Listening to you... "}
-                {voiceStatus === "processing" && "Roleplay partner thinking..."}
-                {voiceStatus === "speaking" && "Roleplay partner responding..."}
-                {voiceStatus === "idle" && "Ready for next turn ✨"}
-              </Text>
-
-              <View style={styles.transcriptCard}>
-                <Text style={styles.transcriptText}>{liveTranscript}</Text>
-              </View>
-
-              <View style={styles.voiceControlsRow}>
-                {isRecording ? (
-                  <Pressable style={styles.voiceStopBtn} onPress={stopRecordingInVoiceMode}>
-                    <FontAwesome name="stop" size={24} color="#fff" />
-                  </Pressable>
-                ) : (
-                  <Pressable style={styles.voiceMicBtn} onPress={startRecordingInVoiceMode}>
-                    <FontAwesome name="microphone" size={28} color="#fff" />
-                  </Pressable>
-                )}
-              </View>
-            </ScrollView>
-          </SafeAreaView>
-        </View>
-      </Modal>
+      <RehearsalVoiceModal
+        visible={voiceModeActive}
+        mochiMood={mochiMood}
+        baseColor={baseColor}
+        voiceStatus={voiceStatus}
+        liveTranscript={liveTranscript}
+        isRecording={isRecording}
+        onClose={closeVoiceMode}
+        onToggleRecording={isRecording ? stopRecordingInVoiceMode : startRecordingInVoiceMode}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF8F0" },
-  setupContainer: { flex: 1, backgroundColor: "#FFF8F0" },
-  topNav: { paddingHorizontal: 20, paddingTop: 10 },
-  setupScroll: { alignItems: "center", padding: 24, paddingTop: 20 },
-  setupTitle: { fontFamily: "BubblegumSans_400Regular", fontSize: 28, color: "#3A3A3A", marginTop: 12 },
-  setupLabel: { fontSize: 15, color: "#6A6A7A", textAlign: "center", marginTop: 8, marginBottom: 20, lineHeight: 22 },
-  setupInput: {
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    fontSize: 15,
-    color: "#3A3A3A",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-    textAlignVertical: "top",
-    marginBottom: 20,
-  },
-  startBtn: {
-    width: "100%",
-    backgroundColor: "#7D7AF2",
-    borderRadius: 16,
-    paddingVertical: 16,
+  mochiWrap: {
     alignItems: "center",
+    marginVertical: 10,
   },
-  startBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  backBtn: { padding: 8 },
-  headerTitle: { fontFamily: "BubblegumSans_400Regular", fontSize: 22, color: "#3A3A3A" },
-  resetBtn: { padding: 6 },
-  resetBtnText: { fontSize: 14, fontWeight: "600", color: "#7D7AF2" },
-
-  mochiWrap: { alignItems: "center", marginVertical: 4 },
   voiceBannerBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
     backgroundColor: "#7D7AF2",
-    marginHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 14,
-    marginBottom: 10,
-  },
-  voiceBannerText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-
-  chatScroll: { paddingHorizontal: 20, paddingBottom: 10 },
-  msgBubble: { borderRadius: 18, padding: 14, marginVertical: 6, maxWidth: "85%" },
-  msgUser: { backgroundColor: "#7D7AF2", alignSelf: "flex-end" },
-  msgAssistant: { backgroundColor: "#fff", alignSelf: "flex-start" },
-  msgTextUser: { color: "#fff", fontSize: 15, lineHeight: 21 },
-  msgTextAssistant: { color: "#3A3A3A", fontSize: 15, lineHeight: 21 },
-  loadingBubble: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12 },
-  loadingText: { fontSize: 13, color: "#8A8A8A" },
-
-  footer: { padding: 16, backgroundColor: "#FFF8F0" },
-  inputRow: { flexDirection: "row", gap: 8, alignItems: "center" },
-  input: {
-    flex: 1,
-    backgroundColor: "#fff",
     borderRadius: 20,
-    paddingHorizontal: 16,
     paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    gap: 8,
+    shadowColor: "#7D7AF2",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  voiceBannerText: {
+    color: "#fff",
     fontSize: 15,
-    color: "#3A3A3A",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    fontWeight: "700",
   },
-  micBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#7D7AF2",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  micBtnActive: { backgroundColor: "#FF4D4D" },
-  sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#7D7AF2",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  endBtn: { alignItems: "center", marginTop: 10, paddingVertical: 8 },
-  endBtnText: { fontSize: 13, fontWeight: "600", color: "#FF6B8B" },
-
-  finishedCard: { padding: 24, alignItems: "center", backgroundColor: "#fff", margin: 20, borderRadius: 20 },
-  finishedTitle: { fontSize: 18, fontWeight: "700", color: "#3A3A3A", marginBottom: 6 },
-  finishedSub: { fontSize: 13, color: "#8A8A8A", textAlign: "center", marginBottom: 16 },
-
-  // Voice Modal
-  voiceModalContainer: { flex: 1, backgroundColor: "rgba(20, 18, 38, 0.96)" },
-  voiceModalScroll: { alignItems: "center", padding: 24, paddingBottom: 40 },
-  closeVoiceBtn: { alignSelf: "flex-end", padding: 12 },
-  voiceModalMochi: { marginTop: 20 },
-  voiceStatusTitle: { color: "#fff", fontSize: 18, fontWeight: "700", textAlign: "center", marginVertical: 10 },
-  transcriptCard: { backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 18, padding: 18, width: "100%", marginVertical: 10 },
-  transcriptText: { color: "#fff", fontSize: 15, textAlign: "center", lineHeight: 22 },
-  voiceControlsRow: { flexDirection: "row", gap: 20, marginBottom: 30 },
-  voiceMicBtn: { width: 72, height: 72, borderRadius: 36, backgroundColor: "#7D7AF2", justifyContent: "center", alignItems: "center" },
-  voiceStopBtn: { width: 72, height: 72, borderRadius: 36, backgroundColor: "#FF4D4D", justifyContent: "center", alignItems: "center" },
 });

@@ -1,10 +1,12 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter, usePathname } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
 
   const tabs = [
     { name: "Home", icon: "home", path: "/" },
@@ -14,7 +16,7 @@ export default function BottomNav() {
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 10) + 6 }]}>
       {tabs.map((tab) => {
         const isActive =
           pathname === tab.path ||
@@ -44,7 +46,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     backgroundColor: "#ffffff",
-    paddingVertical: 22,
+    paddingTop: 12,
     paddingHorizontal: 16,
     borderTopWidth: 1,
     borderTopColor: "rgba(0,0,0,0.05)",

@@ -7,15 +7,28 @@
     "icon": "./assets/images/Mochi_transparent.png",
     "scheme": "mochi",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/Mochi_transparent.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFF8F0"
+    },
     "ios": {
-      "icon": "./assets/images/Mochi_transparent.png"
+      "icon": "./assets/images/Mochi_transparent.png",
+      "splash": {
+        "image": "./assets/images/Mochi_transparent.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFF8F0"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFF8F0",
-        "foregroundImage": "./assets/images/Mochi_transparent.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/Mochi_transparent.png"
+      },
+      "splash": {
+        "image": "./assets/images/Mochi_transparent.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFF8F0"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -30,7 +43,8 @@
         {
           "backgroundColor": "#FFF8F0",
           "image": "./assets/images/Mochi_transparent.png",
-          "imageWidth": 180
+          "imageWidth": 200,
+          "resizeMode": "contain"
         }
       ],
       "expo-font"
