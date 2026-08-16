@@ -48,26 +48,18 @@ export default function RootLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: "#FFF8F0" },
-        headerShadowVisible: false,
-        headerBackTitle: "",
-        headerTitleStyle: {
-          fontFamily: fontsLoaded ? "BubblegumSans_400Regular" : undefined,
-          fontSize: 22,
-          color: "#3A3A3A",
-        },
-        headerTintColor: "#3A3A3A",
+        headerShown: false,
         contentStyle: { backgroundColor: "#FFF8F0" },
       }}
     >
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="customize" options={{ headerShown: false }} />
-      <Stack.Screen name="index" options={{ title: "Mochi" }} />
-      <Stack.Screen name="mirror" options={{ title: "Mirror Mode", headerShown: false}} />
-      <Stack.Screen name="rehearsal" options={{ title: "Rehearsal Mode", headerShown: false }} />
-      <Stack.Screen name="beside" options={{ title: "Beside You Mode", headerShown: false }} />
-      <Stack.Screen name="settings" options={{ title: "Settings" }} />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="mirror" options={{ headerShown: false }} />
+      <Stack.Screen name="rehearsal" options={{ headerShown: false }} />
+      <Stack.Screen name="beside" options={{ headerShown: false }} />
+      <Stack.Screen name="settings" options={{ headerShown: false }} />
       <Stack.Screen name="memories" options={{ headerShown: false }} />
       <Stack.Screen name="streaks" options={{ headerShown: false }} />
     </Stack>

@@ -17,6 +17,7 @@ import Svg, {
   Stop,
   G,
   Rect,
+  Text as SvgText,
 } from "react-native-svg";
 import { MochiMood } from "../store/mochiStore";
 import { shiftColor } from "../lib/color";
@@ -188,7 +189,46 @@ export default function MochiBody({
         <Ellipse cx="138" cy="106" rx="10" ry="6" fill="url(#blushGradient)" />
 
         {/* EYES */}
-        {isCalmOrPeaceful ? (
+        {isSleeping ? (
+          // Tired / Sleepy drooped eyes (u u) with Zzz bubbles
+          <G>
+            <Path
+              d="M68,90 Q78,98 88,90"
+              stroke="#2D2146"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              fill="none"
+            />
+            <Path
+              d="M112,90 Q122,98 132,90"
+              stroke="#2D2146"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              fill="none"
+            />
+            {/* Zzz floating sleep bubbles */}
+            <SvgText
+              x="136"
+              y="58"
+              fill="#7D7AF2"
+              fontSize="14"
+              fontWeight="800"
+              opacity={0.9}
+            >
+              z
+            </SvgText>
+            <SvgText
+              x="146"
+              y="44"
+              fill="#7D7AF2"
+              fontSize="18"
+              fontWeight="800"
+              opacity={0.8}
+            >
+              Z
+            </SvgText>
+          </G>
+        ) : isCalmOrPeaceful ? (
           // Peaceful closed curved eyes (^ ^)
           <G>
             <Path
@@ -314,7 +354,16 @@ export default function MochiBody({
         )}
 
         {/* MOUTH */}
-        {isWorried ? (
+        {isSleeping ? (
+          // Sleepy soft pouting mouth
+          <Path
+            d="M95,107 C97,111 103,111 105,107"
+            stroke="#2D2146"
+            strokeWidth="3"
+            strokeLinecap="round"
+            fill="none"
+          />
+        ) : isWorried ? (
           // Wavy worried mouth
           <Path
             d="M91,108 C96,103 104,113 109,108"

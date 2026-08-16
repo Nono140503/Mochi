@@ -23,6 +23,8 @@ import { useMochiStore, MochiMood } from "../store/mochiStore";
 export default function Rehearsal() {
   const router = useRouter();
   const baseColor = useMochiStore((s) => s.baseColor);
+  const bumpStreak = useMochiStore((s) => s.bumpStreak);
+  const setMood = useMochiStore((s) => s.setMood);
 
   const [setupDone, setSetupDone] = useState(false);
   const [personaDescription, setPersonaDescription] = useState("");
@@ -224,6 +226,8 @@ export default function Rehearsal() {
     setLoading(false);
     setFinished(true);
     setMochiMood("glowing");
+    bumpStreak();
+    setMood("glowing", `Rehearsed hard conversation with: ${personaDescription || "partner"}`, "rehearsal");
     setTimeout(() => {
       setMochiMood("neutral");
     }, 1500);

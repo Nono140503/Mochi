@@ -26,41 +26,29 @@ const DURATION_OPTIONS = [
   { label: "60 Min", minutes: 60, sub: "Power Hour" },
 ];
 
-// Relaxing Royalty-Free Lofi Playlist
+// Genuine High-Quality Lofi Playlist (Local MP3 Assets)
 const LOFI_PLAYLIST = [
   {
     title: "Cozy Study Lofi ☕",
-    url: "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3",
+    source: require("../assets/audio/lofi1.mp3"),
   },
   {
     title: "Midnight Rain Beats 🌧️",
-    url: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a7315b.mp3?filename=lofi-ambient-110241.mp3",
+    source: require("../assets/audio/lofi4.mp3"),
   },
   {
     title: "Chilly Coffee Shop 🍩",
-    url: "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=chill-lofi-song-8444.mp3",
-  },
-  {
-    title: "Starlight Focus 🌟",
-    url: "https://cdn.pixabay.com/download/audio/2022/10/14/audio_9939b7d432.mp3?filename=lofi-study-chill-124632.mp3",
-  },
-  {
-    title: "Gentle Breeze Lofi 🍃",
-    url: "https://cdn.pixabay.com/download/audio/2022/11/06/audio_c3639d6ff5.mp3?filename=soft-relaxing-lofi-126484.mp3",
-  },
-  {
-    title: "Sunset Memory Lofi 🌇",
-    url: "https://cdn.pixabay.com/download/audio/2022/08/02/audio_884fe92c21.mp3?filename=lofi-music-115429.mp3",
+    source: require("../assets/audio/lofi5.mp3"),
   },
 ];
 
 const WELLNESS_RESEARCH_TIPS = [
   "Did you know? Taking a 2-minute stretch break after focusing increases oxygen flow to your brain and boosts energy by up to 25%! 🧠✨",
-  "Mochi's Research 💡: Hydrating with a glass of water after deep work improves focus retention and prevents brain fatigue! 💧",
+  "Mochi's Research: Hydrating with a glass of water after deep work improves focus retention and prevents brain fatigue! 💧",
   "Did you know? Completing even a short 5 to 25 minute focus session releases dopamine, training your brain to start tasks easier next time! 🎯🎉",
-  "Mochi's Research 💡: Looking at something 20 feet away for 20 seconds (the 20-20-20 rule) resets your eye muscles after screen time! 👁️✨",
+  "Mochi's Research: Looking at something 20 feet away for 20 seconds (the 20-20-20 rule) resets your eye muscles after screen time! 👁️✨",
   "Did you know? Taking 3 deep belly breaths lowers cortisol levels instantly, transitioning your mind from work mode to peaceful rest! 🌿🧘",
-  "Mochi's Research 💡: Body-doubling (working alongside a companion like Mochi) activates accountability centers in the brain, making hard tasks feel 40% easier! 🤝💜",
+  "Mochi's Research: Body-doubling (working alongside a companion like Mochi) activates accountability centers in the brain, making hard tasks feel 40% easier! 🤝💜",
 ];
 
 export default function BesideYou() {
@@ -80,6 +68,7 @@ export default function BesideYou() {
   const lofiSoundRef = useRef<Audio.Sound | null>(null);
 
   const bumpStreak = useMochiStore((s) => s.bumpStreak);
+  const setMood = useMochiStore((s) => s.setMood);
   const baseColor = useMochiStore((s) => s.baseColor);
 
   const totalSessionSeconds = selectedMinutes * 60;
@@ -89,21 +78,38 @@ export default function BesideYou() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
 
-  // Control Lofi Background Music with Playlist Randomization
-  const startLofiMusic = async () => {
+  // Control Lofi Background Music with Local Asset Playback & Non-Repeating Shuffle
+  const startLofiMusic = async (forceShuffle = false) => {
     if (!playLofi) return;
     try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
+      });
+
       if (lofiSoundRef.current) {
-        await lofiSoundRef.current.unloadAsync();
+        const soundToUnload = lofiSoundRef.current;
+        lofiSoundRef.current = null;
+        await soundToUnload.stopAsync().catch(() => {});
+        await soundToUnload.unloadAsync().catch(() => {});
       }
-      const randomTrack = LOFI_PLAYLIST[Math.floor(Math.random() * LOFI_PLAYLIST.length)];
-      setCurrentTrack(randomTrack);
+
+      let nextTrack = LOFI_PLAYLIST[Math.floor(Math.random() * LOFI_PLAYLIST.length)];
+      if (forceShuffle && LOFI_PLAYLIST.length > 1) {
+        while (nextTrack.title === currentTrack.title) {
+          nextTrack = LOFI_PLAYLIST[Math.floor(Math.random() * LOFI_PLAYLIST.length)];
+        }
+      }
+      setCurrentTrack(nextTrack);
 
       const { sound } = await Audio.Sound.createAsync(
-        { uri: randomTrack.url },
+        nextTrack.source,
         { shouldPlay: true, isLooping: true, volume: 0.35 }
       );
       lofiSoundRef.current = sound;
+      await sound.playAsync();
     } catch (e) {
       console.warn("Lofi music playback error:", e);
     }
@@ -126,7 +132,7 @@ export default function BesideYou() {
     setSecondsLeft(totalSecs);
     setActive(true);
     setIsPaused(false);
-    setLine("Mochi is quietly typing beside you on their laptop... 💻✨");
+    setLine("Mochi is quietly typing beside you on their laptop...");
 
     startLofiMusic();
 
@@ -184,6 +190,22 @@ export default function BesideYou() {
     stopSession(false);
   };
 
+  const playVictorySound = async () => {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require("../assets/audio/victory.mp3"),
+        { shouldPlay: true, volume: 0.85 }
+      );
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync().catch(() => {});
+        }
+      });
+    } catch (e) {
+      console.warn("Victory sound error:", e);
+    }
+  };
+
   const stopSession = (completed = false) => {
     setActive(false);
     setIsPaused(false);
@@ -193,9 +215,11 @@ export default function BesideYou() {
 
     if (completed) {
       bumpStreak();
+      setMood("glowing", `Completed ${selectedMinutes}-minute Beside focus session`, "beside");
       const randomTip = WELLNESS_RESEARCH_TIPS[Math.floor(Math.random() * WELLNESS_RESEARCH_TIPS.length)];
       setCompletedWellnessTip(randomTip);
       setLine("That's time! Incredible work — we locked in and finished together! 🔥🎉");
+      playVictorySound();
     } else {
       setLine("Taking a break? I'll keep my laptop ready whenever you're set.");
     }
@@ -221,9 +245,7 @@ export default function BesideYou() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <FontAwesome name="arrow-left" size={18} color="#3A3A3A" />
-        </Pressable>
+        
         <Text style={styles.headerTitle}>Beside You Focus</Text>
         <View style={{ width: 36 }} />
       </View>
@@ -306,7 +328,7 @@ export default function BesideYou() {
             <View style={styles.statusBadge}>
               <View style={styles.pulseDot} />
               <Text style={styles.statusBadgeText}>
-                {isPaused ? "Session Paused ⏸️" : "Mochi is locked in & typing on laptop... 💻✨"}
+                {isPaused ? "Session Paused ⏸️" : "Mochi is locked in & typing on laptop... 💻"}
               </Text>
             </View>
 
@@ -317,7 +339,7 @@ export default function BesideYou() {
             </View>
 
             {playLofi && (
-              <Pressable style={styles.lofiActiveBadge} onPress={startLofiMusic}>
+              <Pressable style={styles.lofiActiveBadge} onPress={() => startLofiMusic(true)}>
                 <FontAwesome name="music" size={12} color="#7D7AF2" />
                 <Text style={styles.lofiActiveText}>Playing: {currentTrack.title}</Text>
                 <FontAwesome name="random" size={12} color="#7D7AF2" style={{ marginLeft: 4 }} />
@@ -353,11 +375,11 @@ export default function BesideYou() {
 
             <Pressable style={styles.keepGoingBtn} onPress={handleKeepGoing}>
               <FontAwesome name="play" size={16} color="#fff" />
-              <Text style={styles.keepGoingBtnText}>Keep Going! I can do this 🚀</Text>
+              <Text style={styles.keepGoingBtnText}>Keep Going! I can do this</Text>
             </Pressable>
 
             <Pressable style={styles.confirmEndBtn} onPress={handleConfirmEndEarly}>
-              <Text style={styles.confirmEndBtnText}>End Session Anyway 💔</Text>
+              <Text style={styles.confirmEndBtnText}>End Session Anyway</Text>
             </Pressable>
           </View>
         </View>
@@ -373,14 +395,13 @@ export default function BesideYou() {
 
             <Text style={styles.completedModalTitle}>YAY! YOU DID IT!! 🎉</Text>
             <Text style={styles.completedModalSub}>
-              High five! You locked in, stayed focused, and crushed your goal! I'm so proud of you! 📣✨
+              High five! You locked in, stayed focused, and crushed your goal! I'm so proud of you!
             </Text>
 
             {/* Mochi's Laptop Research Wellness Card */}
             {completedWellnessTip ? (
               <View style={styles.researchCard}>
                 <View style={styles.researchCardHeader}>
-                  <FontAwesome name="laptop" size={13} color="#7D7AF2" />
                   <Text style={styles.researchCardTitle}>
                     While you focused, Mochi researched this for you:
                   </Text>
@@ -391,7 +412,7 @@ export default function BesideYou() {
 
             <Pressable style={styles.celebrateBtn} onPress={() => setShowCompletedModal(false)}>
               <FontAwesome name="trophy" size={18} color="#fff" />
-              <Text style={styles.celebrateBtnText}>Celebrate & Finish 🏆</Text>
+              <Text style={styles.celebrateBtnText}>Celebrate & Finish</Text>
             </Pressable>
           </View>
         </View>
@@ -405,15 +426,16 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  backBtn: { padding: 8 },
+ 
   headerTitle: {
     fontFamily: Platform.OS === "ios" ? "BubblegumSans_400Regular" : "sans-serif-medium",
     fontSize: 22,
     color: "#3A3A3A",
+    marginLeft: 40,
   },
   scrollContent: { padding: 20, paddingBottom: 40 },
 

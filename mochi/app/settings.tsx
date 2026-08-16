@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { FontAwesome } from "@expo/vector-icons";
 import { useMochiStore } from "../store/mochiStore";
 import MochiBody from "../components/MochiBody";
+import BottomNav from "../components/BottomNav";
 
 const PASTEL_PRESETS = [
   { name: "Lavender", hex: "#C9B8FF" },
@@ -61,7 +62,12 @@ export default function Settings() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Profile</Text>
+        <Text style={styles.sub}>Customize Mochi & manage your profile</Text>
+      </View>
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Profile Card */}
         <View style={styles.card}>
@@ -136,13 +142,18 @@ export default function Settings() {
           <Text style={styles.logoutBtnText}>Sign Out of Mochi</Text>
         </Pressable>
       </ScrollView>
+
+      <BottomNav />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF8F0" },
-  scrollContent: { padding: 20, gap: 16 },
+  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 10 },
+  title: { fontFamily: "BubblegumSans_400Regular", fontSize: 26, color: "#3A3A3A" },
+  sub: { fontSize: 13, color: "#8A8A8A", marginTop: 2 },
+  scrollContent: { padding: 20, gap: 16, paddingBottom: 100 },
   card: {
     backgroundColor: "#fff",
     borderRadius: 18,

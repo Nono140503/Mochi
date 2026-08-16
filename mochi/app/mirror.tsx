@@ -12,6 +12,7 @@ import {
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
 import { FontAwesome } from "@expo/vector-icons";
@@ -63,6 +64,7 @@ async function uriToBase64(uri: string): Promise<string> {
 }
 
 export default function Mirror() {
+  const router = useRouter();
   const [input, setInput] = useState("");
   const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(false);
@@ -228,7 +230,7 @@ export default function Mirror() {
       const nextMood = VALID_MOODS.includes(taggedMood as MochiMood)
         ? (taggedMood as MochiMood)
         : "neutral";
-      await setMood(nextMood, spokenText.trim());
+      await setMood(nextMood, spokenText.trim(), "mirror");
 
       // Speak Mochi's reflection aloud!
       speakText(cleanReply, () => {
@@ -263,7 +265,7 @@ export default function Mirror() {
       const nextMood = VALID_MOODS.includes(taggedMood as MochiMood)
         ? (taggedMood as MochiMood)
         : "neutral";
-      await setMood(nextMood, input.trim());
+      await setMood(nextMood, input.trim(), "mirror");
     } catch (e: any) {
       setReply("Mochi couldn't quite hear that. Try again?");
       console.warn(e);
@@ -274,11 +276,20 @@ export default function Mirror() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-    >
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <View style={styles.topHeader}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <FontAwesome name="arrow-left" size={18} color="#3A3A3A" />
+        </Pressable>
+        <Text style={styles.headerTitle}>Mirror Mode</Text>
+        <View style={{ width: 36 }} />
+      </View>
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* Quick Launch ChatGPT Voice Conversation Button */}
         
@@ -421,11 +432,25 @@ export default function Mirror() {
         </SafeAreaView>
       </Modal>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFF8F0" },
+  topHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  backBtn: { padding: 8 },
+  headerTitle: {
+    fontFamily: Platform.OS === "ios" ? "BubblegumSans_400Regular" : "sans-serif-medium",
+    fontSize: 22,
+    color: "#3A3A3A",
+  },
   scrollContent: { alignItems: "center", paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
   voiceBannerBtn: {
     flexDirection: "row",

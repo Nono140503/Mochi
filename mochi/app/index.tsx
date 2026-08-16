@@ -186,7 +186,7 @@ export default function Home() {
         {/* Card 3: Mochi's Meme of the Day (justmeme.wtf) */}
         <View style={styles.memeCard}>
           <View style={styles.memeHeader}>
-            <Text style={styles.memeHeaderTitle}>MOCHI'S MEME OF DAY</Text>
+            <Text style={styles.memeHeaderTitle}>MOCHI'S MEME OF THE DAY</Text>
             
           </View>
 
@@ -421,5 +421,47 @@ const styles = StyleSheet.create({
     color: "#B0B0C0",
     marginTop: 6,
     alignSelf: "flex-end",
+  },
+
+  // Insights Card
+  insightsCard: {
+    width: "100%",
+    backgroundColor: "#F0EAFF",
+    borderRadius: 20,
+    padding: 16,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: "#E2D8FD",
+  },
+  insightsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  insightsIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  insightsTitle: {
+    fontFamily: "BubblegumSans_400Regular",
+    fontSize: 18,
+    color: "#3A3A3A",
+  },
+  insightsSub: {
+    fontSize: 12,
+    color: "#6A6A8A",
+    marginTop: 2,
+  },
+  arrowCirclePurple: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

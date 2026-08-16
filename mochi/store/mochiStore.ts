@@ -28,6 +28,14 @@ export type MochiMood =
   | "curled"
   | "blooming";
 
+export type HistoryItem = {
+  id: string;
+  date: string;
+  mood: MochiMood;
+  note?: string;
+  mode?: "mirror" | "rehearsal" | "beside";
+};
+
 type MochiState = {
   userName: string | null;
   userEmail: string | null;
@@ -38,7 +46,7 @@ type MochiState = {
   baseColor: string; // hex, user-chosen pastel
   lastCheckIn: string | null; // ISO date string
   streak: number;
-  history: { date: string; mood: MochiMood; note?: string }[];
+  history: HistoryItem[];
   hydrated: boolean;
 
   hydrate: () => Promise<void>;
@@ -46,7 +54,7 @@ type MochiState = {
   login: (name: string, email?: string) => Promise<void>;
   completeCustomization: (color: string) => Promise<void>;
   logout: () => Promise<void>;
-  setMood: (mood: MochiMood, note?: string) => Promise<void>;
+  setMood: (mood: MochiMood, note?: string, mode?: "mirror" | "rehearsal" | "beside") => Promise<void>;
   setBaseColor: (color: string) => Promise<void>;
   bumpStreak: () => Promise<void>;
   computeIdleMood: () => MochiMood;
@@ -148,9 +156,16 @@ export const useMochiStore = create<MochiState>((set, get) => ({
     );
   },
 
-  setMood: async (mood, note) => {
+  setMood: async (mood, note, mode = "mirror") => {
     const now = new Date().toISOString();
-    const history = [...get().history, { date: now, mood, note }].slice(-50);
+    const newItem: HistoryItem = {
+      id: Math.random().toString(36).substring(2, 9),
+      date: now,
+      mood,
+      note,
+      mode,
+    };
+    const history = [...get().history, newItem].slice(-100);
     const next = { mood, lastCheckIn: now, history };
     set(next);
     await AsyncStorage.setItem(
