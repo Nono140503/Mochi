@@ -233,14 +233,7 @@ export default function Mirror() {
       await setMood(nextMood, spokenText.trim(), "mirror");
 
       // Speak Mochi's reflection aloud!
-      speakText(cleanReply, () => {
-        // Continuous hands-free conversation in Voice Mode!
-        if (voiceModeActive) {
-          setTimeout(() => {
-            startRecording();
-          }, 800);
-        }
-      });
+      speakText(cleanReply);
     } catch (e) {
       console.warn("Voice process error:", e);
       setReply("I'm right here listening to you. Tell me more?");
@@ -573,7 +566,8 @@ const styles = StyleSheet.create({
   },
   closeVoiceModalBtn: {
     alignSelf: "flex-end",
-    padding: 12,
+    padding: 15,
+    marginTop: 20,
   },
   voiceMochiWrap: {
     marginVertical: 20,
@@ -583,13 +577,15 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: "#3A3A3A",
     textAlign: "center",
+    marginBottom: 10,
   },
   liveTranscriptText: {
     fontSize: 14,
     color: "#8A8A8A",
     fontStyle: "italic",
     textAlign: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
+    marginBottom: 10,
   },
   voiceReplyText: {
     fontSize: 17,
@@ -608,6 +604,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     marginBottom: 30,
+    marginTop: 20,
   },
   hugeMicBtn: {
     width: 86,

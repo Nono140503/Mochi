@@ -75,21 +75,86 @@ export const EXACT_MOOD_COLORS: Record<string, string> = {
   at_peace: "#B8DFDE",
 };
 
+export type SpecialOutfit = "chef" | "doctor" | "sensei" | "artist" | "astronaut";
+
+export interface SpecialMochiDef {
+  id: SpecialOutfit;
+  name: string;
+  title: string;
+  description: string;
+  icon: string;
+  color: string;
+  defaultMood: MochiMood;
+}
+
+export const SPECIAL_MOCHI_CHARACTERS: SpecialMochiDef[] = [
+  {
+    id: "chef",
+    name: "Chef Mochi",
+    title: "Master of Healthy Mind Recipes",
+    description: "Serves wholesome emotional nutrition & warm recipes for the soul!",
+    icon: "cutlery",
+    color: "#FFD0A8",
+    defaultMood: "happy",
+  },
+  {
+    id: "doctor",
+    name: "Doctor Mochi",
+    title: "Chief of Heart Care & Healing",
+    description: "Always ready with a comforting check-up and a big dose of empathy!",
+    icon: "stethoscope",
+    color: "#BDE8D4",
+    defaultMood: "loved",
+  },
+  {
+    id: "sensei",
+    name: "Sensei Mochi",
+    title: "Zen Mindfulness Master",
+    description: "Guides you to deep inner peace, clarity, and balanced focus.",
+    icon: "graduation-cap",
+    color: "#C9B9E8",
+    defaultMood: "at_peace",
+  },
+  {
+    id: "artist",
+    name: "Artist Mochi",
+    title: "Creative Expressionist",
+    description: "Paints your world with bright colors, passion, and creative joy!",
+    icon: "paint-brush",
+    color: "#F7B8D2",
+    defaultMood: "glowing",
+  },
+  {
+    id: "astronaut",
+    name: "Astronaut Mochi",
+    title: "Starlight Explorer",
+    description: "Reaches for the stars and reminds you that your potential is infinite!",
+    icon: "rocket",
+    color: "#B8E3FF",
+    defaultMood: "hopeful",
+  },
+];
+
 export default function MochiBody({
   mood,
   baseColor,
   size = 200,
   hasLaptop = false,
   hasPomPoms = false,
+  specialOutfit = null,
 }: {
   mood: MochiMood;
   baseColor: string;
   size?: number;
   hasLaptop?: boolean;
   hasPomPoms?: boolean;
+  specialOutfit?: SpecialOutfit | null;
 }) {
   const breathe = useSharedValue(1);
-  const moodColor = mood === "neutral" ? baseColor : (EXACT_MOOD_COLORS[mood] || baseColor);
+  const specialCharDef = specialOutfit ? SPECIAL_MOCHI_CHARACTERS.find((c) => c.id === specialOutfit) : null;
+  const activeMood = specialCharDef ? (mood === "neutral" ? specialCharDef.defaultMood : mood) : mood;
+  const effectiveBaseColor = specialCharDef?.color || baseColor;
+  const moodColor = activeMood === "neutral" ? effectiveBaseColor : (EXACT_MOOD_COLORS[activeMood] || effectiveBaseColor);
   const lightColor = shiftColor(moodColor, { hueShift: -10, satShift: 10, lightShift: 14 });
   const shadowTint = shiftColor(moodColor, { hueShift: 10, satShift: -5, lightShift: -10 });
 
@@ -108,12 +173,12 @@ export default function MochiBody({
     transform: [{ scale: breathe.value }],
   }));
 
-  const isWinking = mood === "glowing" || mood === "excited";
-  const isSleeping = mood === "tired";
-  const isWorried = ["anxious", "overwhelmed", "scared"].includes(mood);
-  const isSad = ["sad", "deeply_sad", "lonely", "burnt_out", "numb", "wilting"].includes(mood);
-  const isAngry = ["angry", "annoyed"].includes(mood);
-  const isCalmOrPeaceful = ["calm", "content", "at_peace"].includes(mood);
+  const isWinking = activeMood === "glowing" || activeMood === "excited";
+  const isSleeping = activeMood === "tired";
+  const isWorried = ["anxious", "overwhelmed", "scared"].includes(activeMood);
+  const isSad = ["sad", "deeply_sad", "lonely", "burnt_out", "numb", "wilting"].includes(activeMood);
+  const isAngry = ["angry", "annoyed"].includes(activeMood);
+  const isCalmOrPeaceful = ["calm", "content", "at_peace"].includes(activeMood);
 
   return (
     <Svg width={size} height={size} viewBox="0 0 200 200">
@@ -450,6 +515,76 @@ export default function MochiBody({
             <Circle cx="188" cy="50" r="3" fill="#FFD166" opacity={0.9} />
             <Circle cx="38" cy="40" r="2.5" fill="#7D7AF2" opacity={0.8} />
             <Circle cx="162" cy="40" r="2.5" fill="#7D7AF2" opacity={0.8} />
+          </G>
+        )}
+        {/* SPECIAL MOCHI CHARACTER OUTFITS */}
+        {specialOutfit === "chef" && (
+          <G>
+            {/* Chef Hat (Toque) */}
+            <Path
+              d="M74,32 C68,10 132,10 126,32 C134,34 138,44 128,48 L72,48 C62,44 66,34 74,32 Z"
+              fill="#FFFFFF"
+              stroke="#D1C7E0"
+              strokeWidth="2.5"
+            />
+            <Rect x="74" y="44" width="52" height="10" rx="3" fill="#F3F0FA" stroke="#D1C7E0" strokeWidth="2" />
+            <Path d="M88,18 Q100,6 112,18" fill="none" stroke="#E2D9EE" strokeWidth="2" />
+            {/* Chef Red Scarf */}
+            <Path d="M86,118 C92,126 108,126 114,118 L104,138 L96,138 Z" fill="#EF4444" />
+            {/* Wooden Spoon */}
+            <Path d="M164,96 L178,142" stroke="#C68B59" strokeWidth="4" strokeLinecap="round" />
+            <Ellipse cx="163" cy="94" rx="7" ry="10" fill="#DDB892" stroke="#C68B59" strokeWidth="1.5" />
+          </G>
+        )}
+
+        {specialOutfit === "doctor" && (
+          <G>
+            {/* Head Mirror */}
+            <Path d="M60,66 Q100,54 140,66" fill="none" stroke="#475569" strokeWidth="3" />
+            <Circle cx="100" cy="58" r="9" fill="#F1F5F9" stroke="#94A3B8" strokeWidth="2" />
+            <Circle cx="100" cy="58" r="4" fill="#38BDF8" opacity={0.8} />
+            {/* Stethoscope */}
+            <Path d="M68,112 C68,144 132,144 132,112" fill="none" stroke="#334155" strokeWidth="4" strokeLinecap="round" />
+            <Circle cx="100" cy="138" r="8" fill="#CBD5E1" stroke="#475569" strokeWidth="2" />
+            <Circle cx="100" cy="138" r="3.5" fill="#0EA5E9" />
+          </G>
+        )}
+
+        {specialOutfit === "sensei" && (
+          <G>
+            {/* Zen Headband */}
+            <Path d="M56,64 Q100,52 144,64" fill="none" stroke="#DC2626" strokeWidth="7" />
+            <Circle cx="100" cy="56" r="8" fill="#FFFFFF" />
+            <Circle cx="100" cy="56" r="5.5" fill="#EF4444" />
+            {/* Bamboo Fan in Hand */}
+            <Path d="M156,112 L182,90 A22,22 0 0,1 184,132 Z" fill="#FDE047" stroke="#CA8A04" strokeWidth="2" />
+            <Path d="M156,112 L170,101 M156,112 L176,110 M156,112 L174,121" stroke="#CA8A04" strokeWidth="1.5" />
+          </G>
+        )}
+
+        {specialOutfit === "artist" && (
+          <G>
+            {/* Pink French Beret */}
+            <Path d="M62,48 C62,24 138,18 144,42 C146,50 125,54 62,48 Z" fill="#EC4899" />
+            <Rect x="103" y="19" width="3" height="8" rx="1.5" fill="#BE185D" />
+            {/* Paint Palette */}
+            <G>
+              <Ellipse cx="40" cy="132" rx="17" ry="13" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="2" />
+              <Circle cx="32" cy="128" r="3" fill="#EF4444" />
+              <Circle cx="40" cy="125" r="3" fill="#EAB308" />
+              <Circle cx="47" cy="129" r="3" fill="#3B82F6" />
+              <Circle cx="42" cy="137" r="3" fill="#22C55E" />
+            </G>
+          </G>
+        )}
+
+        {specialOutfit === "astronaut" && (
+          <G>
+            {/* Astronaut Space Helmet Bubble */}
+            <Circle cx="100" cy="94" r="58" fill="#38BDF8" opacity={0.22} stroke="#0EA5E9" strokeWidth="3" />
+            <Path d="M68,62 C84,50 116,50 132,62" fill="none" stroke="#FFFFFF" strokeWidth="4" opacity={0.7} strokeLinecap="round" />
+            {/* Golden Star Badge */}
+            <Path d="M100,132 L102,137 L107,137 L103,140 L104,145 L100,142 L96,145 L97,140 L93,137 L98,137 Z" fill="#FACC15" />
           </G>
         )}
       </AnimatedG>

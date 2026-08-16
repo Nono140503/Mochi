@@ -21,7 +21,7 @@ const MOOD_EMOJIS: Record<string, string> = {
   loved: "🥰",
   content: "🌸",
   calm: "😌",
-  sad: "💙",
+  sad: "😢",
   deeply_sad: "😭",
   anxious: "😰",
   overwhelmed: "😵‍💫",
@@ -88,16 +88,23 @@ export default function Home() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Top Header Bar */}
-        {/* <View style={styles.headerBar}>
-          
-        </View> */}
+        {/* Top Header Bar with Bell Icon */}
+        <View style={styles.topHeaderRow}>
+          <View style={styles.greetingWrap}>
+            <Text style={styles.greetingTitle}>
+              Hey {userName || "friend"},
+            </Text>
+            <Text style={styles.greetingSub}>it's Mochi.</Text>
+          </View>
 
-        {/* Greeting Banner */}
-        <Text style={styles.greetingTitle}>
-          Hey {userName || "friend"},
-        </Text>
-        <Text style={styles.greetingSub}>it's Mochi.</Text>
+          <Pressable
+            style={styles.bellBtn}
+            onPress={() => router.push("/notifications" as any)}
+          >
+            <FontAwesome name="bell" size={18} color="#3A3A3A" />
+            <View style={styles.unreadBadgeDot} />
+          </Pressable>
+        </View>
 
         {/* Mochi Avatar Character */}
         <View style={styles.mochiWrap}>
@@ -185,6 +192,28 @@ export default function Home() {
           </Pressable>
         </View>
 
+        {/* Card 2.5: Mochidle Daily Game Banner */}
+        <Pressable
+          style={styles.mochidleTileCard}
+          onPress={() => router.push("/mochidle" as any)}
+        >
+          <View style={styles.mochidleTileLeft}>
+            <View style={styles.mochidleTagWrap}>
+              <Text style={styles.mochidleTagText}>DAILY GAME</Text>
+            </View>
+            <Text style={styles.mochidleTileTitle}>MOCHIDLE</Text>
+            <Text style={styles.mochidleTileSub}>
+              Guess the wellness word in ≤ 3 tries to win Special Mochi Prizes!
+            </Text>
+          </View>
+          <View style={styles.mochidleTileRight}>
+            <MochiBody mood="glowing" baseColor={baseColor} size={75} specialOutfit="chef" />
+            <View style={styles.arrowCirclePurple}>
+              <FontAwesome name="chevron-right" size={12} color="#7D7AF2" />
+            </View>
+          </View>
+        </Pressable>
+
         {/* Card 3: Mochi's Meme of the Day (justmeme.wtf) */}
         <View style={styles.memeCard}>
           <View style={styles.memeHeader}>
@@ -254,19 +283,59 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
+  topHeaderRow: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  greetingWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bellBtn: {
+    position: "absolute",
+    right: 0,
+    top: 4,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#EAE5F8",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  unreadBadgeDot: {
+    position: "absolute",
+    top: 8,
+    right: 10,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#FF5252",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
   greetingTitle: {
     fontFamily: "BubblegumSans_400Regular",
-    fontSize: 24,
+    fontSize: 26,
     color: "#3A3A3A",
     textAlign: "center",
-    // marginTop: 4,
   },
   greetingSub: {
     fontFamily: "BubblegumSans_400Regular",
-    fontSize: 24,
+    fontSize: 26,
     color: "#3A3A3A",
     textAlign: "center",
-    marginBottom: 14,
+    marginBottom: 6,
   },
   mochiWrap: { marginVertical: 10 },
 
@@ -466,4 +535,40 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
+  // Mochidle Banner Tile
+  mochidleTileCard: {
+    width: "100%",
+    backgroundColor: "#FFF4E5",
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginVertical: 10,
+    borderWidth: 1.5,
+    borderColor: "#FFE0B2",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  mochidleTileLeft: { flex: 1, paddingRight: 10 },
+  mochidleTagWrap: {
+    backgroundColor: "#FF9800",
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  mochidleTagText: { color: "#fff", fontSize: 10, fontWeight: "900" },
+  mochidleTileTitle: {
+    fontFamily: "BubblegumSans_400Regular",
+    fontSize: 22,
+    color: "#3A3A3A",
+  },
+  mochidleTileSub: { fontSize: 12, color: "#6A6A7A", marginTop: 2, lineHeight: 16 },
+  mochidleTileRight: { flexDirection: "row", alignItems: "center", gap: 6 },
 });

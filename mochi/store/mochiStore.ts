@@ -48,6 +48,13 @@ type MochiState = {
   lastCheckIn: string | null; // ISO date string
   streak: number;
   history: HistoryItem[];
+  unlockedMochis: string[]; // IDs of unlocked special Mochi characters
+  mochidleStats: {
+    played: number;
+    won: number;
+    streak: number;
+    lastPlayedDate: string | null;
+  };
   hydrated: boolean;
 
   hydrate: () => Promise<void>;
@@ -58,6 +65,8 @@ type MochiState = {
   setMood: (mood: MochiMood, note?: string, mode?: "mirror" | "rehearsal" | "beside") => Promise<void>;
   saveRehearsalSession: (persona?: string, note?: string, transcript?: string) => Promise<void>;
   saveFocusSession: (durationMinutes: number, note?: string) => Promise<void>;
+  unlockSpecialMochi: (characterId: string, word: string, guessesTaken: number) => Promise<void>;
+  recordMochidleGame: (won: boolean) => Promise<void>;
   setBaseColor: (color: string) => Promise<void>;
   bumpStreak: () => Promise<void>;
   computeIdleMood: () => MochiMood;
@@ -77,6 +86,8 @@ export const useMochiStore = create<MochiState>((set, get) => ({
   lastCheckIn: null,
   streak: 0,
   history: [],
+  unlockedMochis: [],
+  mochidleStats: { played: 0, won: 0, streak: 0, lastPlayedDate: null },
   hydrated: false,
 
   hydrate: async () => {
@@ -341,6 +352,58 @@ export const useMochiStore = create<MochiState>((set, get) => ({
         }
       })();
     }
+  },
+
+  unlockSpecialMochi: async (characterId, word, guessesTaken) => {
+    const currentUnlocked = get().unlockedMochis || [];
+    if (currentUnlocked.includes(characterId)) return;
+
+    const nextUnlocked = [...currentUnlocked, characterId];
+    set({ unlockedMochis: nextUnlocked });
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...get(), unlockedMochis: nextUnlocked })
+    );
+
+    // Sync to Supabase SQL table mochidle_prizes
+    if (isSupabaseConfigured()) {
+      (async () => {
+        try {
+          const userRes = await supabase.auth.getUser();
+          const userId = userRes.data?.user?.id || null;
+
+          const payload = {
+            ...(userId ? { user_id: userId } : {}),
+            character_id: characterId,
+            word,
+            guesses_taken: guessesTaken,
+            unlocked_at: new Date().toISOString(),
+          };
+
+          const { error } = await supabase.from("mochidle_prizes").insert(payload);
+          if (error && !error.message.includes("schema cache") && error.code !== "PGRST205") {
+            console.warn("Supabase mochidle_prizes sync notice:", error.message);
+          }
+        } catch (e) {
+          console.warn("Supabase mochidle_prizes insert exception:", e);
+        }
+      })();
+    }
+  },
+
+  recordMochidleGame: async (won: boolean) => {
+    const today = new Date().toISOString().split("T")[0];
+    const prevStats = get().mochidleStats || { played: 0, won: 0, streak: 0, lastPlayedDate: null };
+    const played = prevStats.played + 1;
+    const wonCount = won ? prevStats.won + 1 : prevStats.won;
+    const streak = won ? prevStats.streak + 1 : 0;
+    const nextStats = { played, won: wonCount, streak, lastPlayedDate: today };
+
+    set({ mochidleStats: nextStats });
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...get(), mochidleStats: nextStats })
+    );
   },
 
   setBaseColor: async (color) => {

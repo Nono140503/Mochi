@@ -18,12 +18,12 @@ type TimeFrame = "today" | "week" | "month" | "all";
 const MOOD_EMOJIS: Record<string, string> = {
   happy: "😊",
   loved: "💖",
-  content: "🌸",
+  content: "😌",
   calm: "🌿",
   sad: "💙",
   deeply_sad: "🌧️",
-  anxious: "⚡",
-  overwhelmed: "🌀",
+  anxious: "😰",
+  overwhelmed: "😵‍💫",
   angry: "😡",
   annoyed: "😤",
   lonely: "😞",
@@ -33,14 +33,14 @@ const MOOD_EMOJIS: Record<string, string> = {
   numb: "😶",
   hopeful: "🤩",
   excited: "😝",
-  grateful: "🌷🥹",
+  grateful: "🥹",
   proud: "🏆",
   at_peace: "🧘",
   wilting: "🥀",
   glowing: "✨",
   curled: "💤",
   blooming: "🌸",
-  neutral: "✨😶",
+  neutral: "😐",
 };
 
 export default function Memories() {
@@ -50,37 +50,37 @@ export default function Memories() {
   const userName = useMochiStore((s) => s.userName) || "Friend";
 
   const [timeframe, setTimeframe] = useState<TimeFrame>("week");
+  const [selectedMode, setSelectedMode] = useState<"all" | "mirror" | "beside" | "rehearsal">("all");
 
-  // Sample data fallback if user has no entries yet
+  // Sample data fallback if user has no entries yet, sorted newest first
   const displayHistory: HistoryItem[] = useMemo(() => {
-    if (history && history.length > 0) return history;
-    const now = new Date();
-    return [
+    const list: HistoryItem[] = history && history.length > 0 ? history : [
       {
         id: "m1",
-        date: new Date(now.getTime() - 1000 * 60 * 60 * 2).toISOString(),
-        mood: "content",
-        note: "Took a moment to breathe and focus with Mochi beside me.",
+        date: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+        mood: "content" as MochiMood,
+        note: "Completed 25-minute Beside focus session",
         mode: "beside",
       },
       {
         id: "m2",
-        date: new Date(now.getTime() - 1000 * 60 * 60 * 24).toISOString(),
-        mood: "sad",
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+        mood: "sad" as MochiMood,
         note: "i am sad - Mochi felt blue with you",
         mode: "mirror",
       },
       {
         id: "m3",
-        date: new Date(now.getTime() - 1000 * 60 * 60 * 48).toISOString(),
-        mood: "hopeful",
+        date: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
+        mood: "hopeful" as MochiMood,
         note: "Rehearsed tough conversation about rent boundaries.",
         mode: "rehearsal",
       },
     ];
+    return [...list].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [history]);
 
-  // Filter history by selected timeframe
+  // Filter history by selected timeframe and mode
   const filteredHistory = useMemo(() => {
     const now = new Date();
     return displayHistory.filter((item) => {
@@ -88,12 +88,19 @@ export default function Memories() {
       const diffMs = now.getTime() - itemDate.getTime();
       const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
-      if (timeframe === "today") return diffDays <= 1;
-      if (timeframe === "week") return diffDays <= 7;
-      if (timeframe === "month") return diffDays <= 30;
-      return true;
+      let matchesTime = true;
+      if (timeframe === "today") matchesTime = diffDays <= 1;
+      else if (timeframe === "week") matchesTime = diffDays <= 7;
+      else if (timeframe === "month") matchesTime = diffDays <= 30;
+
+      let matchesMode = true;
+      if (selectedMode !== "all") {
+        matchesMode = item.mode === selectedMode || (!item.mode && selectedMode === "mirror");
+      }
+
+      return matchesTime && matchesMode;
     });
-  }, [displayHistory, timeframe]);
+  }, [displayHistory, timeframe, selectedMode]);
 
   // Count moods & calculate top emotion
   const moodCounts = useMemo(() => {
@@ -200,6 +207,29 @@ export default function Memories() {
           })}
         </View>
 
+        {/* Mode Filter Selector Chips */}
+        <View style={styles.modeFilterRow}>
+          {[
+            { id: "all", label: "All Feed" },
+            { id: "mirror", label: "Mirror 💖" },
+            { id: "beside", label: "Beside You 💻" },
+            { id: "rehearsal", label: "Rehearsal 💬" },
+          ].map((m) => {
+            const isActive = selectedMode === m.id;
+            return (
+              <Pressable
+                key={m.id}
+                style={[styles.modeFilterChip, isActive && styles.modeFilterChipActive]}
+                onPress={() => setSelectedMode(m.id as any)}
+              >
+                <Text style={[styles.modeFilterText, isActive && styles.modeFilterTextActive]}>
+                  {m.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         {/* AI Recommendations Card */}
         <View style={styles.recomCard}>
           <View style={styles.recomHeader}>
@@ -236,8 +266,7 @@ export default function Memories() {
           {/* Top Mood with Smile Icon */}
           <View style={styles.statBox}>
             <View style={styles.statValRow}>
-              
-              <Text style={styles.statNumber}>{MOOD_EMOJIS[topMood]}</Text>
+              <Text style={styles.statNumber}>{MOOD_EMOJIS[topMood] || "🌸"}</Text>
             </View>
             <Text style={styles.statLabel}>Top Mood</Text>
           </View>
@@ -248,7 +277,6 @@ export default function Memories() {
 
         {filteredHistory.length === 0 ? (
           <View style={styles.emptyCard}>
-            
             <Text style={styles.emptyTitle}>No memories logged for this period!</Text>
             <Text style={styles.emptySub}>
               Share how you feel in Mirror Mode or complete a Beside focus session to add to your timeline!
@@ -264,7 +292,7 @@ export default function Memories() {
               hour: "2-digit",
               minute: "2-digit",
             });
-            const emoji = MOOD_EMOJIS[item.mood] || "✨";
+            const emoji = item.mode === "beside" ? "💻" : (MOOD_EMOJIS[item.mood] || "✨");
             const modeIcon =
               item.mode === "rehearsal" ? "comments" : item.mode === "beside" ? "laptop" : "heart";
             const modeLabel =
@@ -284,7 +312,15 @@ export default function Memories() {
                   <Text style={styles.memoryEmoji}>{emoji}</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.memoryMoodLabel}>
-                      Felt <Text style={{ fontWeight: "700" }}>{item.mood.replace("_", " ")}</Text>
+                      {item.mode === "beside" ? (
+                        <Text style={{ fontWeight: "800", color: "#7D7AF2" }}>Beside You Focus Session 🎯</Text>
+                      ) : item.mode === "rehearsal" ? (
+                        <Text style={{ fontWeight: "800", color: "#7D7AF2" }}>Rehearsed Conversation 💬</Text>
+                      ) : (
+                        <>
+                          Felt <Text style={{ fontWeight: "700" }}>{item.mood.replace("_", " ")}</Text>
+                        </>
+                      )}
                     </Text>
                     {item.note ? <Text style={styles.memoryNote}>"{item.note}"</Text> : null}
                   </View>
@@ -320,7 +356,7 @@ const styles = StyleSheet.create({
   topCardTitle: { fontSize: 17, fontWeight: "800", color: "#3A3A3A", marginBottom: 4 },
   topCardSub: { fontSize: 13, color: "#7A7A7A", lineHeight: 18 },
 
-  tabsRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  tabsRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
   tabChip: {
     flex: 1,
     backgroundColor: "#fff",
@@ -335,6 +371,21 @@ const styles = StyleSheet.create({
   tabChipInner: { flexDirection: "row", alignItems: "center" },
   tabChipText: { fontSize: 13, fontWeight: "600", color: "#6A6A6A" },
   tabChipTextActive: { color: "#fff", fontWeight: "700" },
+
+  modeFilterRow: { flexDirection: "row", gap: 6, marginBottom: 16 },
+  modeFilterChip: {
+    flex: 1,
+    backgroundColor: "#FFF8F0",
+    borderRadius: 12,
+    paddingVertical: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#EAE5F8",
+  },
+  modeFilterChipActive: { backgroundColor: "#F0EAFF", borderColor: "#7D7AF2" },
+  modeFilterText: { fontSize: 11, fontWeight: "600", color: "#8A8A8A" },
+  modeFilterTextActive: { color: "#7D7AF2", fontWeight: "800" },
 
   recomCard: {
     backgroundColor: "#F0EAFF",

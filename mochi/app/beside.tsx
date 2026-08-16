@@ -8,6 +8,7 @@ import {
   Switch,
   Platform,
   Modal,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -19,7 +20,7 @@ import { useMochiStore } from "../store/mochiStore";
 const NARRATION_INTERVAL_MS = 45_000; // Narration every 45s
 
 const DURATION_OPTIONS = [
-  { label: "5 Min", minutes: 5, sub: "Mini Sprint ⚡" },
+  { label: "5 Min", minutes: 5, sub: "Mini Sprint" },
   { label: "15 Min", minutes: 15, sub: "Quick Sprint" },
   { label: "25 Min", minutes: 25, sub: "Pomodoro" },
   { label: "45 Min", minutes: 45, sub: "Deep Work" },
@@ -77,6 +78,15 @@ export default function BesideYou() {
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
+
+  // Prevent back navigation while active focus session is running
+  useEffect(() => {
+    if (!active) return;
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
+      return true;
+    });
+    return () => backHandler.remove();
+  }, [active]);
 
   // Control Lofi Background Music with Local Asset Playback & Non-Repeating Shuffle
   const startLofiMusic = async (forceShuffle = false) => {
@@ -139,8 +149,11 @@ export default function BesideYou() {
     tickRef.current = setInterval(() => {
       setSecondsLeft((s) => {
         if (s <= 1) {
-          stopSession(true);
-          setShowCompletedModal(true);
+          if (tickRef.current) clearInterval(tickRef.current);
+          setTimeout(() => {
+            stopSession(true);
+            setShowCompletedModal(true);
+          }, 0);
           return 0;
         }
         return s - 1;
@@ -158,8 +171,11 @@ export default function BesideYou() {
       tickRef.current = setInterval(() => {
         setSecondsLeft((s) => {
           if (s <= 1) {
-            stopSession(true);
-            setShowCompletedModal(true);
+            if (tickRef.current) clearInterval(tickRef.current);
+            setTimeout(() => {
+              stopSession(true);
+              setShowCompletedModal(true);
+            }, 0);
             return 0;
           }
           return s - 1;
@@ -245,8 +261,12 @@ export default function BesideYou() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <FontAwesome name="arrow-left" size={18} color="#3A3A3A" />
+        <Pressable
+          onPress={() => router.back()}
+          style={[styles.backBtn, active && { opacity: 0.3 }]}
+          disabled={active}
+        >
+          <FontAwesome name={active ? "lock" : "arrow-left"} size={18} color="#3A3A3A" />
         </Pressable>
         <Text style={styles.headerTitle}>Beside You Focus</Text>
         <View style={{ width: 36 }} />
