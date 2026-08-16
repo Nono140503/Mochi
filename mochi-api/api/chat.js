@@ -50,19 +50,35 @@ module.exports = async function handler(req, res) {
 
   const { mode, messages } = req.body || {};
 
+  // 1. Input Validation: Validate mode
   if (!mode || !SYSTEM_PROMPTS[mode]) {
     return res.status(400).json({ error: "mode must be one of: mirror, rehearsal, beside" });
   }
+
+  // 2. Input Validation: Validate messages array
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: "messages must be a non-empty array" });
   }
 
-  // 1. Try Groq Llama 3.3 70B (100% FREE - Groq key is already set on Vercel!)
+  // 3. Input Sanitization: Validate and truncate message items
+  const sanitizedMessages = messages
+    .filter((m) => m && typeof m === "object" && typeof m.content === "string" && m.content.trim().length > 0)
+    .slice(-20) // Keep last 20 messages max to prevent token inflation
+    .map((m) => ({
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: m.content.trim().slice(0, 2000), // Max 2,000 chars per message
+    }));
+
+  if (sanitizedMessages.length === 0) {
+    return res.status(400).json({ error: "messages array must contain valid non-empty text content" });
+  }
+
+  // 1. Try Groq Llama 3.3 70B (100% FREE - Groq key is set on Vercel!)
   if (process.env.GROQ_API_KEY) {
     try {
       const formattedMessages = [
         { role: "system", content: SYSTEM_PROMPTS[mode] },
-        ...messages,
+        ...sanitizedMessages,
       ];
 
       const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -101,7 +117,7 @@ module.exports = async function handler(req, res) {
     try {
       const formattedMessages = [
         { role: "system", content: SYSTEM_PROMPTS[mode] },
-        ...messages,
+        ...sanitizedMessages,
       ];
 
       const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -139,7 +155,7 @@ module.exports = async function handler(req, res) {
         model: "claude-3-5-sonnet-20241022",
         max_tokens: 300,
         system: SYSTEM_PROMPTS[mode],
-        messages,
+        messages: sanitizedMessages,
       });
 
       return res.status(200).json(response);
@@ -151,4 +167,4 @@ module.exports = async function handler(req, res) {
   return res.status(500).json({
     error: "Mochi is having a moment. Try again.",
   });
-}
+};

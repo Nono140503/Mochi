@@ -1,0 +1,17 @@
+# Environment files
+.env
+.env*
+.env*.local
+*.env
+
+# Dependencies & Build
+node_modules/
+.expo/
+dist/
+web-build/
+.vercel
+
+# System files
+.DS_Store
+*.pem
+*.key

@@ -6,8 +6,13 @@ module.exports = async function handler(req, res) {
   try {
     const { audioBase64 } = req.body || {};
 
-    if (!audioBase64) {
+    if (!audioBase64 || typeof audioBase64 !== "string" || audioBase64.trim().length === 0) {
       return res.status(400).json({ error: "audioBase64 is required" });
+    }
+
+    // Limit base64 audio payload size to max ~10MB (14,000,000 chars) to prevent serverless memory exhaustion
+    if (audioBase64.length > 14000000) {
+      return res.status(413).json({ error: "Audio payload exceeds maximum 10MB size limit" });
     }
 
     const apiKey = process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY;
@@ -47,6 +52,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (err) {
     console.error("Transcribe error:", err);
-    return res.status(500).json({ error: "Failed to transcribe audio", details: err?.message || String(err) });
+    return res.status(500).json({ error: "Failed to transcribe audio" });
   }
-}
+};

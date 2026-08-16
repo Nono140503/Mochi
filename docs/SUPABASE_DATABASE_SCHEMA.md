@@ -1,5 +1,3 @@
-## Copied from Supabase
-
 ## Table `profiles`
 
 ### Columns
@@ -87,62 +85,52 @@
 
 ## RLS Policies
 
-### `focus_sessions`
+### `check_ins`
 
 | Policy | Command | Roles | Action | USING | WITH CHECK |
 |--------|---------|-------|--------|-------|------------|
-| `Users can create focus sessions` | INSERT | public | PERMISSIVE | — | `(auth.uid() = user_id)` |
-| `Users can manage their own focus_sessions` | ALL | public | PERMISSIVE | `((auth.uid() = user_id) OR (user_id IS NULL))` | `((auth.uid() = user_id) OR (user_id IS NULL))` |
-| `Users can view own focus sessions` | SELECT | public | PERMISSIVE | `(auth.uid() = user_id)` | — |
-| `public_focus_all` | ALL | public | PERMISSIVE | `true` | `true` |
+| `Users can view own check-ins` | SELECT | public | PERMISSIVE | `(auth.uid() = user_id)` | — |
+| `Users can create check-ins` | INSERT | public | PERMISSIVE | — | `(auth.uid() = user_id)` |
+| `Users can manage own check_ins` | ALL | public | PERMISSIVE | `(auth.uid() = user_id)` | `(auth.uid() = user_id)` |
 
 ### `rehearsal_sessions`
 
 | Policy | Command | Roles | Action | USING | WITH CHECK |
 |--------|---------|-------|--------|-------|------------|
-| `Users can create rehearsal sessions` | INSERT | public | PERMISSIVE | — | `(auth.uid() = user_id)` |
-| `Users can manage their own rehearsal_sessions` | ALL | public | PERMISSIVE | `((auth.uid() = user_id) OR (user_id IS NULL))` | `((auth.uid() = user_id) OR (user_id IS NULL))` |
 | `Users can view own rehearsal sessions` | SELECT | public | PERMISSIVE | `(auth.uid() = user_id)` | — |
-| `public_rehearsal_all` | ALL | public | PERMISSIVE | `true` | `true` |
+| `Users can create rehearsal sessions` | INSERT | public | PERMISSIVE | — | `(auth.uid() = user_id)` |
+| `Users can manage own rehearsal_sessions` | ALL | public | PERMISSIVE | `(auth.uid() = user_id)` | `(auth.uid() = user_id)` |
+
+### `focus_sessions`
+
+| Policy | Command | Roles | Action | USING | WITH CHECK |
+|--------|---------|-------|--------|-------|------------|
+| `Users can view own focus sessions` | SELECT | public | PERMISSIVE | `(auth.uid() = user_id)` | — |
+| `Users can create focus sessions` | INSERT | public | PERMISSIVE | — | `(auth.uid() = user_id)` |
+| `Users can manage own focus_sessions` | ALL | public | PERMISSIVE | `(auth.uid() = user_id)` | `(auth.uid() = user_id)` |
 
 ### `profiles`
 
 | Policy | Command | Roles | Action | USING | WITH CHECK |
 |--------|---------|-------|--------|-------|------------|
-| `Allow users to insert/update their own profile` | ALL | public | PERMISSIVE | `(auth.uid() = id)` | — |
 | `Allow users to read their own profile` | SELECT | public | PERMISSIVE | `(auth.uid() = id)` | — |
-| `Users can insert own profile` | INSERT | public | PERMISSIVE | — | `(auth.uid() = id)` |
-| `Users can update own profile` | UPDATE | public | PERMISSIVE | `(auth.uid() = id)` | — |
+| `Allow users to insert/update their own profile` | ALL | public | PERMISSIVE | `(auth.uid() = id)` | — |
 | `Users can view own profile` | SELECT | public | PERMISSIVE | `(auth.uid() = id)` | — |
-
-### `mochidle_prizes`
-
-| Policy | Command | Roles | Action | USING | WITH CHECK |
-|--------|---------|-------|--------|-------|------------|
-| `Allow public insert to mochidle_prizes` | INSERT | public | PERMISSIVE | — | `true` |
-| `Allow public select from mochidle_prizes` | SELECT | public | PERMISSIVE | `true` | — |
-| `Users can manage their own mochidle_prizes` | ALL | public | PERMISSIVE | `((auth.uid() = user_id) OR (user_id IS NULL))` | `((auth.uid() = user_id) OR (user_id IS NULL))` |
+| `Users can update own profile` | UPDATE | public | PERMISSIVE | `(auth.uid() = id)` | — |
+| `Users can insert own profile` | INSERT | public | PERMISSIVE | — | `(auth.uid() = id)` |
 
 ### `memories`
 
 | Policy | Command | Roles | Action | USING | WITH CHECK |
 |--------|---------|-------|--------|-------|------------|
-| `Allow inserts on memories` | INSERT | public | PERMISSIVE | — | `true` |
-| `Allow reads on memories` | SELECT | public | PERMISSIVE | `true` | — |
-| `Allow users to delete their own memories` | DELETE | public | PERMISSIVE | `(auth.uid() = user_id)` | — |
-| `Allow users to insert their own memories` | INSERT | public | PERMISSIVE | — | `(auth.uid() = user_id)` |
 | `Allow users to read their own memories` | SELECT | public | PERMISSIVE | `(auth.uid() = user_id)` | — |
-| `Users can manage their own memories` | ALL | public | PERMISSIVE | `((auth.uid() = user_id) OR (user_id IS NULL))` | `((auth.uid() = user_id) OR (user_id IS NULL))` |
-| `public_memories_all` | ALL | public | PERMISSIVE | `true` | `true` |
+| `Allow users to insert their own memories` | INSERT | public | PERMISSIVE | — | `(auth.uid() = user_id)` |
+| `Allow users to delete their own memories` | DELETE | public | PERMISSIVE | `(auth.uid() = user_id)` | — |
+| `Users can manage own memories` | ALL | public | PERMISSIVE | `(auth.uid() = user_id)` | `(auth.uid() = user_id)` |
 
-### `check_ins`
+### `mochidle_prizes`
 
 | Policy | Command | Roles | Action | USING | WITH CHECK |
 |--------|---------|-------|--------|-------|------------|
-| `Allow inserts on check_ins` | INSERT | public | PERMISSIVE | — | `true` |
-| `Allow reads on check_ins` | SELECT | public | PERMISSIVE | `true` | — |
-| `Users can create check-ins` | INSERT | public | PERMISSIVE | — | `(auth.uid() = user_id)` |
-| `Users can manage their own check_ins` | ALL | public | PERMISSIVE | `((auth.uid() = user_id) OR (user_id IS NULL))` | `((auth.uid() = user_id) OR (user_id IS NULL))` |
-| `Users can view own check-ins` | SELECT | public | PERMISSIVE | `(auth.uid() = user_id)` | — |
-| `public_check_ins_all` | ALL | public | PERMISSIVE | `true` | `true` |
+| `Users can manage own mochidle_prizes` | ALL | public | PERMISSIVE | `(auth.uid() = user_id)` | `(auth.uid() = user_id)` |
 
