@@ -70,6 +70,7 @@ export default function Auth() {
           data?.user?.user_metadata?.display_name ||
           (userName && userName !== "Friend" ? userName : "Friend");
         await login(displayName, email.trim());
+        useMochiStore.setState({ hasCustomizedMochi: false });
         router.replace("/customize" as any);
       } else {
         // Attempt Supabase Sign In
@@ -80,12 +81,18 @@ export default function Auth() {
 
         if (error) {
           console.warn("Supabase signin notice:", error.message);
+          if (error.message.includes("Email not confirmed")) {
+            setErrorMessage("Please check your email to confirm your account, or turn off 'Confirm email' in Supabase Dashboard.");
+          } else {
+            setErrorMessage(error.message);
+          }
         }
 
         const displayName =
           data?.user?.user_metadata?.display_name ||
           (name.trim() ? name.trim() : userName && userName !== "Friend" ? userName : "Friend");
         await login(displayName, email.trim());
+        useMochiStore.setState({ hasCustomizedMochi: true });
         router.replace("/" as any);
       }
     } catch (e: any) {

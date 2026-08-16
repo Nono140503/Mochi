@@ -73,10 +73,6 @@ export const EXACT_MOOD_COLORS: Record<string, string> = {
   grateful: "#F5DFA6",
   proud: "#E9AFC0",
   at_peace: "#B8DFDE",
-  glowing: "#FFE9A8",
-  blooming: "#F7B8D2",
-  curled: "#C9B9E8",
-  wilting: "#AFC9E8",
 };
 
 export default function MochiBody({

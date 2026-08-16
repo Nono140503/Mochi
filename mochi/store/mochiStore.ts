@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
 export type MochiMood =
   | "neutral"
@@ -55,6 +56,8 @@ type MochiState = {
   completeCustomization: (color: string) => Promise<void>;
   logout: () => Promise<void>;
   setMood: (mood: MochiMood, note?: string, mode?: "mirror" | "rehearsal" | "beside") => Promise<void>;
+  saveRehearsalSession: (persona?: string, note?: string, transcript?: string) => Promise<void>;
+  saveFocusSession: (durationMinutes: number, note?: string) => Promise<void>;
   setBaseColor: (color: string) => Promise<void>;
   bumpStreak: () => Promise<void>;
   computeIdleMood: () => MochiMood;
@@ -79,12 +82,44 @@ export const useMochiStore = create<MochiState>((set, get) => ({
   hydrate: async () => {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        set({ ...parsed, hydrated: true });
-      } else {
-        set({ hydrated: true });
+      const parsed = raw ? JSON.parse(raw) : {};
+
+      if (isSupabaseConfigured()) {
+        try {
+          const { data } = await supabase
+            .from("memories")
+            .select("*")
+            .order("date", { ascending: true })
+            .limit(100);
+
+          if (data && data.length > 0) {
+            const fetchedHistory: HistoryItem[] = data.map((item: any) => ({
+              id: item.id || Math.random().toString(36).substring(2, 9),
+              date: item.date || item.created_at,
+              mood: (item.mood || "neutral") as MochiMood,
+              note: item.note || undefined,
+              mode: (item.mode || "mirror") as any,
+            }));
+
+            // Find last actual Mirror Mode check-in date
+            const lastMirrorCheckIn = [...fetchedHistory]
+              .reverse()
+              .find((h) => h.mode === "mirror" || !h.mode);
+
+            set({
+              ...parsed,
+              history: fetchedHistory,
+              ...(lastMirrorCheckIn ? { lastCheckIn: lastMirrorCheckIn.date, mood: lastMirrorCheckIn.mood } : {}),
+              hydrated: true,
+            });
+            return;
+          }
+        } catch (e) {
+          console.warn("Failed to fetch memories from Supabase:", e);
+        }
       }
+
+      set({ ...parsed, hydrated: true });
     } catch (e) {
       console.warn("Mochi failed to hydrate state", e);
       set({ hydrated: true });
@@ -108,13 +143,13 @@ export const useMochiStore = create<MochiState>((set, get) => ({
       userName: name.trim() || "Friend",
       userEmail: newEmail,
       isLoggedIn: true,
+      hasCustomizedMochi: true,
       ...(isDifferentAccount
         ? {
             history: [],
             lastCheckIn: null,
             streak: 0,
             mood: "neutral" as MochiMood,
-            hasCustomizedMochi: false,
           }
         : {}),
     };
@@ -166,12 +201,146 @@ export const useMochiStore = create<MochiState>((set, get) => ({
       mode,
     };
     const history = [...get().history, newItem].slice(-100);
-    const next = { mood, lastCheckIn: now, history };
+    // ONLY update lastCheckIn if mode is mirror
+    const isMirrorCheckIn = mode === "mirror";
+    const next = {
+      mood,
+      ...(isMirrorCheckIn ? { lastCheckIn: now } : {}),
+      history,
+    };
     set(next);
     await AsyncStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ ...get(), ...next })
     );
+
+    // Sync to Supabase cloud
+    if (isSupabaseConfigured()) {
+      (async () => {
+        try {
+          const userRes = await supabase.auth.getUser();
+          const userId = userRes.data?.user?.id || null;
+
+          const checkInPayload = {
+            ...(userId ? { user_id: userId } : {}),
+            mood,
+            note: note || null,
+          };
+
+          const { error: cErr } = await supabase.from("check_ins").insert(checkInPayload);
+          if (cErr) console.warn("Supabase check_ins insert notice:", cErr.message);
+
+          const { error: mErr } = await supabase.from("memories").insert({
+            ...(userId ? { user_id: userId } : {}),
+            date: now,
+            mood,
+            note: note || null,
+            mode: "mirror",
+          });
+          if (mErr) console.warn("Supabase memories insert notice:", mErr.message);
+        } catch (e) {
+          console.warn("Supabase check_ins insert exception:", e);
+        }
+      })();
+    }
+  },
+
+  saveRehearsalSession: async (persona, note, transcript) => {
+    const now = new Date().toISOString();
+    const noteText = note || `Rehearsed conversation with: ${persona || "practice partner"}`;
+    const newItem: HistoryItem = {
+      id: Math.random().toString(36).substring(2, 9),
+      date: now,
+      mood: "glowing",
+      note: noteText,
+      mode: "rehearsal",
+    };
+
+    const history = [...get().history, newItem].slice(-100);
+    set({ history });
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...get(), history })
+    );
+
+    // Sync rehearsal session to Supabase rehearsal_sessions and memories tables
+    if (isSupabaseConfigured()) {
+      (async () => {
+        try {
+          const userRes = await supabase.auth.getUser();
+          const userId = userRes.data?.user?.id || null;
+
+          const rehPayload = {
+            ...(userId ? { user_id: userId } : {}),
+            persona_description: persona || "Practice Partner",
+            note: noteText,
+          };
+
+          const { error: rErr } = await supabase.from("rehearsal_sessions").insert(rehPayload);
+          if (rErr) console.warn("Supabase rehearsal_sessions insert notice:", rErr.message);
+
+          const { error: mErr } = await supabase.from("memories").insert({
+            ...(userId ? { user_id: userId } : {}),
+            date: now,
+            mood: "glowing",
+            note: noteText,
+            mode: "rehearsal",
+          });
+          if (mErr) console.warn("Supabase memories insert notice:", mErr.message);
+        } catch (e) {
+          console.warn("Supabase rehearsal_sessions insert exception:", e);
+        }
+      })();
+    }
+  },
+
+  saveFocusSession: async (durationMinutes, note) => {
+    const now = new Date().toISOString();
+    const noteText = note || `Completed ${durationMinutes}-minute Beside focus session`;
+    const newItem: HistoryItem = {
+      id: Math.random().toString(36).substring(2, 9),
+      date: now,
+      mood: "glowing",
+      note: noteText,
+      mode: "beside",
+    };
+
+    const history = [...get().history, newItem].slice(-100);
+    set({ history });
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...get(), history })
+    );
+
+    // Sync focus session to Supabase focus_sessions and memories tables
+    if (isSupabaseConfigured()) {
+      (async () => {
+        try {
+          const userRes = await supabase.auth.getUser();
+          const userId = userRes.data?.user?.id || null;
+
+          const focusPayload = {
+            ...(userId ? { user_id: userId } : {}),
+            duration_minutes: durationMinutes,
+            note: noteText,
+          };
+
+          const { error: fErr } = await supabase.from("focus_sessions").insert(focusPayload);
+          if (fErr) console.warn("Supabase focus_sessions insert notice:", fErr.message);
+
+          const { error: mErr } = await supabase.from("memories").insert({
+            ...(userId ? { user_id: userId } : {}),
+            date: now,
+            mood: "glowing",
+            note: noteText,
+            mode: "beside",
+          });
+          if (mErr) console.warn("Supabase memories insert notice:", mErr.message);
+        } catch (e) {
+          console.warn("Supabase focus_sessions insert exception:", e);
+        }
+      })();
+    }
   },
 
   setBaseColor: async (color) => {

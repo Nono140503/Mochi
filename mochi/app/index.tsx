@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -62,7 +62,9 @@ export default function Home() {
   const [loadingMeme, setLoadingMeme] = useState(false);
 
   const displayMood = hydrated ? mood || computeIdleMood() : "neutral";
-  const lastEntry = history.length > 0 ? history[history.length - 1] : null;
+  const lastCheckIn = useMemo(() => {
+    return [...history].reverse().find((item) => item.mode === "mirror" || !item.mode) || null;
+  }, [history]);
 
   const fetchMeme = async () => {
     setLoadingMeme(true);
@@ -103,19 +105,19 @@ export default function Home() {
         </View>
 
         {/* Card 1: Your Last Check-In */}
-        {lastEntry ? (
+        {lastCheckIn ? (
           <View style={styles.checkInCard}>
             <Text style={styles.cardHeaderTitle}>YOUR LAST CHECK-IN</Text>
             <View style={styles.checkInContent}>
               <Text style={styles.checkInEmoji}>
-                {MOOD_EMOJIS[lastEntry.mood] || "🌸"}
+                {MOOD_EMOJIS[lastCheckIn.mood] || "🌸"}
               </Text>
               <View style={styles.checkInTextWrap}>
                 <Text style={styles.checkInNote}>
-                  "{lastEntry.note || "Took a check-in moment"}"
+                  "{lastCheckIn.note || "Took a check-in moment"}"
                 </Text>
                 <Text style={styles.checkInMoodLabel}>
-                  Mochi felt <Text style={{ fontWeight: "700" }}>{lastEntry.mood}</Text>
+                  Mochi felt <Text style={{ fontWeight: "700" }}>{lastCheckIn.mood}</Text>
                 </Text>
               </View>
             </View>

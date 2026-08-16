@@ -46,7 +46,7 @@ export default function CustomizeMochi() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Mochi Avatar */}
         <View style={styles.mochiWrap}>
-          <MochiBody mood="glowing" baseColor={selectedColor} size={220} />
+          <MochiBody mood="neutral" baseColor={selectedColor} size={220} />
         </View>
 
         {/* Mochi Speech Bubble */}
@@ -86,7 +86,7 @@ export default function CustomizeMochi() {
 
         {/* Confirm Button */}
         <Pressable style={styles.finishBtn} onPress={handleFinish}>
-          <Text style={styles.finishBtnText}>Meet My Mochi ✨</Text>
+          <Text style={styles.finishBtnText}>Meet My Mochi</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   checkmark: { color: "#2A2A2A", fontWeight: "800", fontSize: 16 },
   finishBtn: {
     width: "100%",
-    backgroundColor: "#B79CFF",
+    backgroundColor: "#7D7AF2",
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",

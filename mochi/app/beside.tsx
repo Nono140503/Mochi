@@ -68,7 +68,7 @@ export default function BesideYou() {
   const lofiSoundRef = useRef<Audio.Sound | null>(null);
 
   const bumpStreak = useMochiStore((s) => s.bumpStreak);
-  const setMood = useMochiStore((s) => s.setMood);
+  const saveFocusSession = useMochiStore((s) => s.saveFocusSession);
   const baseColor = useMochiStore((s) => s.baseColor);
 
   const totalSessionSeconds = selectedMinutes * 60;
@@ -215,7 +215,7 @@ export default function BesideYou() {
 
     if (completed) {
       bumpStreak();
-      setMood("glowing", `Completed ${selectedMinutes}-minute Beside focus session`, "beside");
+      saveFocusSession(selectedMinutes, `Completed ${selectedMinutes}-minute Beside focus session`);
       const randomTip = WELLNESS_RESEARCH_TIPS[Math.floor(Math.random() * WELLNESS_RESEARCH_TIPS.length)];
       setCompletedWellnessTip(randomTip);
       setLine("That's time! Incredible work — we locked in and finished together! 🔥🎉");
@@ -245,7 +245,9 @@ export default function BesideYou() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <FontAwesome name="arrow-left" size={18} color="#3A3A3A" />
+        </Pressable>
         <Text style={styles.headerTitle}>Beside You Focus</Text>
         <View style={{ width: 36 }} />
       </View>
@@ -426,16 +428,15 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
- 
+  backBtn: { padding: 8 },
   headerTitle: {
     fontFamily: Platform.OS === "ios" ? "BubblegumSans_400Regular" : "sans-serif-medium",
     fontSize: 22,
     color: "#3A3A3A",
-    marginLeft: 40,
   },
   scrollContent: { padding: 20, paddingBottom: 40 },
 
