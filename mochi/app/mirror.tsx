@@ -161,6 +161,8 @@ export default function Mirror() {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        playThroughEarpieceAndroid: false,
+        staysActiveInBackground: true,
       });
 
       Speech.stop();
@@ -295,7 +297,7 @@ export default function Mirror() {
         </View>
         <Pressable style={styles.voiceBannerBtn} onPress={openVoiceMode}>
           <FontAwesome name="microphone" size={18} color="#fff" />
-          <Text style={styles.voiceBannerText}>Start Live Voice Conversation ✨</Text>
+          <Text style={styles.voiceBannerText}>Start Live Voice Conversation</Text>
         </Pressable>
 
         {reply ? (

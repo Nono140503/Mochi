@@ -14,6 +14,7 @@ import { FontAwesome } from "@expo/vector-icons";
 import { useMochiStore } from "../store/mochiStore";
 import MochiBody from "../components/MochiBody";
 import BottomNav from "../components/BottomNav";
+import { speakMochiText } from "../lib/api";
 
 const PASTEL_PRESETS = [
   { name: "Lavender", hex: "#C9B8FF" },
@@ -30,7 +31,6 @@ export default function Settings() {
     userName,
     userEmail,
     baseColor,
-    mood,
     streak,
     setBaseColor,
     login,
@@ -48,14 +48,14 @@ export default function Settings() {
   };
 
   const handleLogout = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out of Mochi?", [
+    Alert.alert("Sign Out & Reset", "Are you sure you want to reset app state for your demo recording?", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Sign Out",
+        text: "Reset & Start Onboarding",
         style: "destructive",
         onPress: async () => {
           await logout();
-          router.replace("/login" as any);
+          router.replace("/onboarding" as any);
         },
       },
     ]);
@@ -64,8 +64,8 @@ export default function Settings() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Profile</Text>
-        <Text style={styles.sub}>Customize Mochi & manage your profile</Text>
+        <Text style={styles.title}>Profile & Settings</Text>
+        <Text style={styles.sub}>Customize Mochi, change voice & manage profile</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -95,6 +95,25 @@ export default function Settings() {
               <Text style={styles.emailValue}>{userEmail}</Text>
             </View>
           ) : null}
+        </View>
+
+        {/* Mochi Voice Persona Card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Mochi's Voice Persona 🎙️</Text>
+          <Text style={styles.sectionSub}>
+            Mochi speaks with a warm, gentle & comforting AI voice persona across all voice conversations.
+          </Text>
+
+          <View style={styles.voiceSingleBox}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.voiceSingleTitle}>Bella (Soft & Warm Mochi 🌸)</Text>
+              <Text style={styles.voiceSingleSub}>Signature gentle & comforting companion voice</Text>
+            </View>
+            <Pressable style={styles.voiceTestBtn} onPress={() => speakMochiText(`Hi ${userName || "friend"}! I'm Mochi, and I'm right here with you.`)}>
+              <FontAwesome name="volume-up" size={14} color="#fff" />
+              <Text style={styles.voiceTestBtnText}>Test Voice</Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Mochi Default Color Customization */}
@@ -136,10 +155,10 @@ export default function Settings() {
           </View>
         </View>
 
-        {/* Sign Out Button */}
+        {/* Sign Out & Reset App Data */}
         <Pressable style={styles.logoutBtn} onPress={handleLogout}>
           <FontAwesome name="sign-out" size={16} color="#FF6B8B" />
-          <Text style={styles.logoutBtnText}>Sign Out of Mochi</Text>
+          <Text style={styles.logoutBtnText}>Sign Out</Text>
         </Pressable>
       </ScrollView>
 
@@ -199,6 +218,30 @@ const styles = StyleSheet.create({
   },
   saveBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
 
+  voiceSingleBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0EAFF",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: "#7D7AF2",
+    justifyContent: "space-between",
+    marginTop: 6,
+  },
+  voiceSingleTitle: { fontSize: 14, fontWeight: "800", color: "#3A3A3A" },
+  voiceSingleSub: { fontSize: 12, color: "#6A6A7A", marginTop: 2 },
+  voiceTestBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#7D7AF2",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  voiceTestBtnText: { color: "#fff", fontWeight: "700", fontSize: 12 },
+
   mochiPreview: { alignItems: "center", marginVertical: 10 },
   swatchGrid: {
     flexDirection: "row",
@@ -237,6 +280,20 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 14, color: "#5A5A5A" },
   statValue: { fontSize: 16, fontWeight: "700", color: "#7D7AF2" },
 
+  replayOnboardingBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#F0EAFF",
+    borderRadius: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: "#D6C7F5",
+    marginTop: 10,
+  },
+  replayOnboardingBtnText: { color: "#7D7AF2", fontWeight: "700", fontSize: 15 },
+
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -247,7 +304,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderWidth: 1,
     borderColor: "#FFD0D9",
-    marginTop: 10,
+    marginTop: 6,
   },
   logoutBtnText: { color: "#FF6B8B", fontWeight: "700", fontSize: 15 },
 });

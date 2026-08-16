@@ -49,6 +49,7 @@ type MochiState = {
   streak: number;
   history: HistoryItem[];
   unlockedMochis: string[]; // IDs of unlocked special Mochi characters
+  selectedVoiceId: string; // ElevenLabs voice ID or custom selected voice
   mochidleStats: {
     played: number;
     won: number;
@@ -68,12 +69,14 @@ type MochiState = {
   unlockSpecialMochi: (characterId: string, word: string, guessesTaken: number) => Promise<void>;
   recordMochidleGame: (won: boolean) => Promise<void>;
   setBaseColor: (color: string) => Promise<void>;
+  setVoiceId: (voiceId: string) => Promise<void>;
   bumpStreak: () => Promise<void>;
   computeIdleMood: () => MochiMood;
 };
 
 const STORAGE_KEY = "mochi:state:v1";
 const DEFAULT_COLOR = "#C9B8FF"; // soft lavender
+const DEFAULT_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"; // Bella (Soft & Warm Mochi)
 
 export const useMochiStore = create<MochiState>((set, get) => ({
   userName: null,
@@ -83,6 +86,7 @@ export const useMochiStore = create<MochiState>((set, get) => ({
   hasCustomizedMochi: false,
   mood: "neutral",
   baseColor: DEFAULT_COLOR,
+  selectedVoiceId: DEFAULT_VOICE_ID,
   lastCheckIn: null,
   streak: 0,
   history: [],
@@ -189,17 +193,16 @@ export const useMochiStore = create<MochiState>((set, get) => ({
       isLoggedIn: false,
       userName: null,
       userEmail: null,
+      hasCompletedOnboarding: false,
       hasCustomizedMochi: false,
       history: [],
       lastCheckIn: null,
       streak: 0,
       mood: "neutral" as MochiMood,
+      unlockedMochis: [],
     };
     set(next);
-    await AsyncStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ ...get(), ...next })
-    );
+    await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
   },
 
   setMood: async (mood, note, mode = "mirror") => {
@@ -411,6 +414,14 @@ export const useMochiStore = create<MochiState>((set, get) => ({
     await AsyncStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ ...get(), baseColor: color })
+    );
+  },
+
+  setVoiceId: async (voiceId) => {
+    set({ selectedVoiceId: voiceId });
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...get(), selectedVoiceId: voiceId })
     );
   },
 

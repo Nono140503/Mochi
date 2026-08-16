@@ -207,28 +207,7 @@ export default function Memories() {
           })}
         </View>
 
-        {/* Mode Filter Selector Chips */}
-        <View style={styles.modeFilterRow}>
-          {[
-            { id: "all", label: "All Feed" },
-            { id: "mirror", label: "Mirror 💖" },
-            { id: "beside", label: "Beside You 💻" },
-            { id: "rehearsal", label: "Rehearsal 💬" },
-          ].map((m) => {
-            const isActive = selectedMode === m.id;
-            return (
-              <Pressable
-                key={m.id}
-                style={[styles.modeFilterChip, isActive && styles.modeFilterChipActive]}
-                onPress={() => setSelectedMode(m.id as any)}
-              >
-                <Text style={[styles.modeFilterText, isActive && styles.modeFilterTextActive]}>
-                  {m.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+       
 
         {/* AI Recommendations Card */}
         <View style={styles.recomCard}>
@@ -274,6 +253,28 @@ export default function Memories() {
 
         {/* Memory History Timeline Feed */}
         <Text style={styles.sectionHeader}>Memory Feed</Text>
+         {/* Mode Filter Selector Chips */}
+        <View style={styles.modeFilterRow}>
+          {[
+            { id: "all", label: "All Feed" },
+            { id: "mirror", label: "Mirror" },
+            { id: "beside", label: "Beside You" },
+            { id: "rehearsal", label: "Rehearsal" },
+          ].map((m) => {
+            const isActive = selectedMode === m.id;
+            return (
+              <Pressable
+                key={m.id}
+                style={[styles.modeFilterChip, isActive && styles.modeFilterChipActive]}
+                onPress={() => setSelectedMode(m.id as any)}
+              >
+                <Text style={[styles.modeFilterText, isActive && styles.modeFilterTextActive]}>
+                  {m.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
         {filteredHistory.length === 0 ? (
           <View style={styles.emptyCard}>
@@ -313,9 +314,9 @@ export default function Memories() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.memoryMoodLabel}>
                       {item.mode === "beside" ? (
-                        <Text style={{ fontWeight: "800", color: "#7D7AF2" }}>Beside You Focus Session 🎯</Text>
+                        <Text style={{ fontWeight: "800", color: "#7D7AF2" }}>Beside You Focus Session</Text>
                       ) : item.mode === "rehearsal" ? (
-                        <Text style={{ fontWeight: "800", color: "#7D7AF2" }}>Rehearsed Conversation 💬</Text>
+                        <Text style={{ fontWeight: "800", color: "#7D7AF2" }}>Rehearsed Conversation</Text>
                       ) : (
                         <>
                           Felt <Text style={{ fontWeight: "700" }}>{item.mood.replace("_", " ")}</Text>

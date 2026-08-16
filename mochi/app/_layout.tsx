@@ -1,7 +1,11 @@
 import { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useFonts, BubblegumSans_400Regular } from "@expo-google-fonts/bubblegum-sans";
+import * as SplashScreen from "expo-splash-screen";
 import { useMochiStore } from "../store/mochiStore";
+
+// Keep Splash Screen visible until state hydration and fonts are ready
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -22,7 +26,10 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !fontsLoaded) return;
+
+    // Smoothly hide native Splash Screen
+    SplashScreen.hideAsync().catch(() => {});
 
     const currentScreen = segments[0];
 
@@ -43,7 +50,7 @@ export default function RootLayout() {
         router.replace("/" as any);
       }
     }
-  }, [hydrated, isLoggedIn, hasCompletedOnboarding, hasCustomizedMochi, segments]);
+  }, [hydrated, fontsLoaded, isLoggedIn, hasCompletedOnboarding, hasCustomizedMochi, segments]);
 
   return (
     <Stack

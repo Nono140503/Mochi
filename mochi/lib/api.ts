@@ -1,5 +1,8 @@
 import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
+import * as FileSystem from "expo-file-system/legacy";
+import { Platform } from "react-native";
+import { useMochiStore } from "../store/mochiStore";
 
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
@@ -15,16 +18,22 @@ async function getMochiVoiceIdentifier(): Promise<string | undefined> {
   if (cachedVoiceId) return cachedVoiceId;
   try {
     const voices = await Speech.getAvailableVoicesAsync();
+    if (!voices || voices.length === 0) return undefined;
     const enVoices = voices.filter((v) => v.language.startsWith("en"));
     const sweetVoice =
       enVoices.find(
         (v) =>
-          v.name.includes("Samantha") ||
-          v.name.includes("Karen") ||
-          v.name.includes("Siri") ||
-          v.name.includes("Google") ||
-          v.quality === "Enhanced"
-      ) || enVoices[0];
+          ((v.quality as any) === "Enhanced" || (v.quality as any) === "Premium" || (v as any).quality === 300) &&
+          (v.name.includes("Samantha") ||
+            v.name.includes("Siri") ||
+            v.name.includes("Karen") ||
+            v.name.includes("Serena") ||
+            v.name.includes("Google") ||
+            v.name.includes("Natural"))
+      ) ||
+      enVoices.find((v) => (v.quality as any) === "Enhanced" || v.name.includes("Samantha") || v.name.includes("Siri")) ||
+      enVoices[0];
+
     if (sweetVoice) {
       cachedVoiceId = sweetVoice.identifier;
       return cachedVoiceId;
@@ -48,15 +57,41 @@ export async function speakMochiText(
     soundRef.current = null;
   }
 
+  // Force audio routing out of the main loud speaker (not handset earpiece)
   try {
-    // 1. Primary: ElevenLabs Warm Voice (Bella: EXAVITQu4vr4xnSDxMaL)
-    const audioBase64 = await synthesizeVoice(text, "EXAVITQu4vr4xnSDxMaL");
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      playThroughEarpieceAndroid: false,
+      staysActiveInBackground: true,
+      shouldDuckAndroid: true,
+    });
+  } catch (e) {
+    console.warn("Audio mode playback config error:", e);
+  }
+
+  const chosenVoiceId = useMochiStore.getState().selectedVoiceId || "EXAVITQu4vr4xnSDxMaL";
+
+  try {
+    // 1. Primary: ElevenLabs Warm Voice using user's chosen Voice ID
+    const audioBase64 = await synthesizeVoice(text, chosenVoiceId);
     if (audioBase64) {
-      const uri = `data:audio/mpeg;base64,${audioBase64}`;
-      const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
+      let soundUri = `data:audio/mpeg;base64,${audioBase64}`;
+      if (Platform.OS !== "web" && FileSystem.cacheDirectory) {
+        const fileUri = `${FileSystem.cacheDirectory}mochi_tts_${Date.now()}.mp3`;
+        await FileSystem.writeAsStringAsync(fileUri, audioBase64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        soundUri = fileUri;
+      }
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: soundUri },
+        { shouldPlay: true, volume: 1.0 }
+      );
       if (soundRef) soundRef.current = sound;
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync().catch(() => {});
           if (onFinish) onFinish();
         }
       });
@@ -66,12 +101,12 @@ export async function speakMochiText(
     console.warn("ElevenLabs TTS fallback to device voice:", e);
   }
 
-  // 2. Fallback: Unified Device Voice (Samantha/Karen/Siri/Google) with soft pitch/rate
-  const voiceId = await getMochiVoiceIdentifier();
+  // 2. Fallback: Enhanced High-Quality Device Voice with soft pitch/rate
+  const deviceVoiceId = await getMochiVoiceIdentifier();
   Speech.speak(text, {
-    voice: voiceId,
-    rate: 0.92,
-    pitch: 1.08,
+    voice: deviceVoiceId,
+    rate: 0.90,
+    pitch: 1.05,
     onDone: () => {
       if (onFinish) onFinish();
     },

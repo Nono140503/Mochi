@@ -151,6 +151,8 @@ export default function Rehearsal() {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        playThroughEarpieceAndroid: false,
+        staysActiveInBackground: true,
       });
 
       const { recording } = await Audio.Recording.createAsync(
