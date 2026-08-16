@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     // 1. Try justmeme.wtf AI meme API first
     const jmRes = await fetch("https://justmeme.wtf/api/ai-meme", {

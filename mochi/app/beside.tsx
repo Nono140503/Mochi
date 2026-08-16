@@ -1,77 +1,217 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
-import * as Speech from "expo-speech";
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  Switch,
+  Platform,
+  Modal,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { FontAwesome } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 import MochiBody from "../components/MochiBody";
-import { sendToMochi } from "../lib/api";
 import { useMochiStore } from "../store/mochiStore";
 
-const NARRATION_INTERVAL_MS = 45_000; // every 45s, keep API usage light
-const SESSION_LENGTH_S = 15 * 60; // 15 minute focus session
+const NARRATION_INTERVAL_MS = 45_000; // Narration every 45s
+
+const DURATION_OPTIONS = [
+  { label: "5 Min", minutes: 5, sub: "Mini Sprint ⚡" },
+  { label: "15 Min", minutes: 15, sub: "Quick Sprint" },
+  { label: "25 Min", minutes: 25, sub: "Pomodoro" },
+  { label: "45 Min", minutes: 45, sub: "Deep Work" },
+  { label: "60 Min", minutes: 60, sub: "Power Hour" },
+];
+
+// Relaxing Royalty-Free Lofi Playlist
+const LOFI_PLAYLIST = [
+  {
+    title: "Cozy Study Lofi ☕",
+    url: "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3",
+  },
+  {
+    title: "Midnight Rain Beats 🌧️",
+    url: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a7315b.mp3?filename=lofi-ambient-110241.mp3",
+  },
+  {
+    title: "Chilly Coffee Shop 🍩",
+    url: "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=chill-lofi-song-8444.mp3",
+  },
+  {
+    title: "Starlight Focus 🌟",
+    url: "https://cdn.pixabay.com/download/audio/2022/10/14/audio_9939b7d432.mp3?filename=lofi-study-chill-124632.mp3",
+  },
+  {
+    title: "Gentle Breeze Lofi 🍃",
+    url: "https://cdn.pixabay.com/download/audio/2022/11/06/audio_c3639d6ff5.mp3?filename=soft-relaxing-lofi-126484.mp3",
+  },
+  {
+    title: "Sunset Memory Lofi 🌇",
+    url: "https://cdn.pixabay.com/download/audio/2022/08/02/audio_884fe92c21.mp3?filename=lofi-music-115429.mp3",
+  },
+];
+
+const WELLNESS_RESEARCH_TIPS = [
+  "Did you know? Taking a 2-minute stretch break after focusing increases oxygen flow to your brain and boosts energy by up to 25%! 🧠✨",
+  "Mochi's Research 💡: Hydrating with a glass of water after deep work improves focus retention and prevents brain fatigue! 💧",
+  "Did you know? Completing even a short 5 to 25 minute focus session releases dopamine, training your brain to start tasks easier next time! 🎯🎉",
+  "Mochi's Research 💡: Looking at something 20 feet away for 20 seconds (the 20-20-20 rule) resets your eye muscles after screen time! 👁️✨",
+  "Did you know? Taking 3 deep belly breaths lowers cortisol levels instantly, transitioning your mind from work mode to peaceful rest! 🌿🧘",
+  "Mochi's Research 💡: Body-doubling (working alongside a companion like Mochi) activates accountability centers in the brain, making hard tasks feel 40% easier! 🤝💜",
+];
 
 export default function BesideYou() {
+  const router = useRouter();
+  const [selectedMinutes, setSelectedMinutes] = useState(25);
+  const [playLofi, setPlayLofi] = useState(true);
+  const [currentTrack, setCurrentTrack] = useState(LOFI_PLAYLIST[0]);
+  const [completedWellnessTip, setCompletedWellnessTip] = useState("");
+
   const [active, setActive] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(SESSION_LENGTH_S);
-  const [line, setLine] = useState("Ready when you are.");
+  const [secondsLeft, setSecondsLeft] = useState(25 * 60);
+  const [line, setLine] = useState("Ready when you are! Let me open my laptop.");
+  const [isPaused, setIsPaused] = useState(false);
+
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const narrateRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lofiSoundRef = useRef<Audio.Sound | null>(null);
+
   const bumpStreak = useMochiStore((s) => s.bumpStreak);
   const baseColor = useMochiStore((s) => s.baseColor);
 
-  const glowLevel = 1 - secondsLeft / SESSION_LENGTH_S; // 0 -> 1 as time passes
+  const totalSessionSeconds = selectedMinutes * 60;
+  const glowLevel = 1 - secondsLeft / totalSessionSeconds;
   const mood = glowLevel > 0.66 ? "glowing" : glowLevel > 0.33 ? "blooming" : "neutral";
 
-  const narrate = async () => {
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+
+  // Control Lofi Background Music with Playlist Randomization
+  const startLofiMusic = async () => {
+    if (!playLofi) return;
     try {
-      const reply = await sendToMochi("beside", [
-        { role: "user", content: "Keep working alongside me. Give me one line." },
-      ]);
-      setLine(reply);
-      Speech.stop();
-      Speech.speak(reply, { rate: 0.95 });
+      if (lofiSoundRef.current) {
+        await lofiSoundRef.current.unloadAsync();
+      }
+      const randomTrack = LOFI_PLAYLIST[Math.floor(Math.random() * LOFI_PLAYLIST.length)];
+      setCurrentTrack(randomTrack);
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: randomTrack.url },
+        { shouldPlay: true, isLooping: true, volume: 0.35 }
+      );
+      lofiSoundRef.current = sound;
     } catch (e) {
-      console.warn(e);
+      console.warn("Lofi music playback error:", e);
     }
   };
 
-  const start = () => {
+  const stopLofiMusic = async () => {
+    if (lofiSoundRef.current) {
+      try {
+        await lofiSoundRef.current.stopAsync();
+        await lofiSoundRef.current.unloadAsync();
+      } catch (e) {
+        console.warn("Error unloading Lofi music:", e);
+      }
+      lofiSoundRef.current = null;
+    }
+  };
+
+  const startSession = () => {
+    const totalSecs = selectedMinutes * 60;
+    setSecondsLeft(totalSecs);
     setActive(true);
-    narrate();
+    setIsPaused(false);
+    setLine("Mochi is quietly typing beside you on their laptop... 💻✨");
+
+    startLofiMusic();
+
     tickRef.current = setInterval(() => {
       setSecondsLeft((s) => {
         if (s <= 1) {
-          stop(true);
+          stopSession(true);
+          setShowCompletedModal(true);
           return 0;
         }
         return s - 1;
       });
     }, 1000);
-    narrateRef.current = setInterval(narrate, NARRATION_INTERVAL_MS);
   };
 
-  const stop = (completed = false) => {
-    setActive(false);
-    if (tickRef.current) clearInterval(tickRef.current);
-    if (narrateRef.current) clearInterval(narrateRef.current);
-    Speech.stop();
-    if (completed) {
-      bumpStreak();
-      setLine("That's time! Nice work — I stayed the whole way through. 🔥");
+  const togglePause = () => {
+    if (isPaused) {
+      // Resume
+      setIsPaused(false);
+      if (playLofi && lofiSoundRef.current) {
+        lofiSoundRef.current.playAsync().catch(() => {});
+      }
+      tickRef.current = setInterval(() => {
+        setSecondsLeft((s) => {
+          if (s <= 1) {
+            stopSession(true);
+            setShowCompletedModal(true);
+            return 0;
+          }
+          return s - 1;
+        });
+      }, 1000);
     } else {
-      setLine("Taking a break? I'll be right here.");
+      // Pause
+      setIsPaused(true);
+      if (tickRef.current) clearInterval(tickRef.current);
+      if (lofiSoundRef.current) {
+        lofiSoundRef.current.pauseAsync().catch(() => {});
+      }
     }
   };
 
-  const reset = () => {
-    stop(false);
-    setSecondsLeft(SESSION_LENGTH_S);
-    setLine("Ready when you are.");
+  const handleFinishEarlyClick = () => {
+    if (!isPaused) togglePause();
+    setShowConfirmModal(true);
+  };
+
+  const handleKeepGoing = () => {
+    setShowConfirmModal(false);
+    if (isPaused) togglePause();
+  };
+
+  const handleConfirmEndEarly = () => {
+    setShowConfirmModal(false);
+    stopSession(false);
+  };
+
+  const stopSession = (completed = false) => {
+    setActive(false);
+    setIsPaused(false);
+    if (tickRef.current) clearInterval(tickRef.current);
+    if (narrateRef.current) clearInterval(narrateRef.current);
+    stopLofiMusic();
+
+    if (completed) {
+      bumpStreak();
+      const randomTip = WELLNESS_RESEARCH_TIPS[Math.floor(Math.random() * WELLNESS_RESEARCH_TIPS.length)];
+      setCompletedWellnessTip(randomTip);
+      setLine("That's time! Incredible work — we locked in and finished together! 🔥🎉");
+    } else {
+      setLine("Taking a break? I'll keep my laptop ready whenever you're set.");
+    }
+  };
+
+  const resetSession = () => {
+    stopSession(false);
+    setSecondsLeft(selectedMinutes * 60);
+    setLine("Ready when you are! Let me open my laptop.");
   };
 
   useEffect(() => {
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
       if (narrateRef.current) clearInterval(narrateRef.current);
-      Speech.stop();
+      stopLofiMusic();
     };
   }, []);
 
@@ -79,46 +219,481 @@ export default function BesideYou() {
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
   return (
-    <View style={styles.container}>
-      <MochiBody mood={mood} baseColor={baseColor} size={220} />
-      <Text style={styles.timer}>{mm}:{ss}</Text>
-      <Text style={styles.line}>{line}</Text>
-
-      <View style={styles.btnRow}>
-        <Pressable
-          style={[styles.btn, active && styles.btnStop]}
-          onPress={() => (active ? stop(false) : start())}
-        >
-          <Text style={styles.btnText}>{active ? "Pause" : "Start focus session"}</Text>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <FontAwesome name="arrow-left" size={18} color="#3A3A3A" />
         </Pressable>
-        {secondsLeft < SESSION_LENGTH_S && (
-          <Pressable style={styles.resetBtn} onPress={reset}>
-            <Text style={styles.resetBtnText}>Reset</Text>
-          </Pressable>
-        )}
+        <Text style={styles.headerTitle}>Beside You Focus</Text>
+        <View style={{ width: 36 }} />
       </View>
-    </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {!active ? (
+          // SETUP SCREEN
+          <View style={styles.setupCard}>
+            {/* Encouraging ADHD / Focus Banner */}
+            <View style={styles.bannerBox}>
+              <Text style={styles.bannerTitle}>Got things to do? Let's lock in and do it! Time to focus! 🚀</Text>
+              <Text style={styles.bannerSub}>
+                Mochi will sit beside you and type on their laptop to help you stay accountable through body-doubling.
+              </Text>
+            </View>
+
+            {/* Mochi Idle Avatar */}
+            <View style={styles.mochiPreviewWrap}>
+              <MochiBody mood="glowing" baseColor={baseColor} size={180} hasLaptop={true} />
+            </View>
+
+            {/* Duration Selector */}
+            <Text style={styles.sectionLabel}>Recommend Focus Duration:</Text>
+            <View style={styles.durationGrid}>
+              {DURATION_OPTIONS.map((opt) => {
+                const isSelected = selectedMinutes === opt.minutes;
+                return (
+                  <Pressable
+                    key={opt.minutes}
+                    style={[styles.durationChip, isSelected && styles.durationChipSelected]}
+                    onPress={() => setSelectedMinutes(opt.minutes)}
+                  >
+                    <Text style={[styles.durationChipTitle, isSelected && styles.durationChipTitleSelected]}>
+                      {opt.label}
+                    </Text>
+                    <Text style={[styles.durationChipSub, isSelected && styles.durationChipSubSelected]}>
+                      {opt.sub}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Do Not Disturb Pro-Tip Banner */}
+            <View style={styles.tipCard}>
+              <FontAwesome name="lightbulb-o" size={20} color="#7D7AF2" style={{ marginTop: 2 }} />
+              <Text style={styles.tipText}>
+                <Text style={{ fontWeight: "700" }}>Pro Tip: </Text>
+                I recommend that you turn on your <Text style={{ fontWeight: "700" }}>Do Not Disturb</Text> for the duration of our session so that we focus completely!
+              </Text>
+            </View>
+
+            {/* Lofi Background Music Switch */}
+            <View style={styles.lofiRow}>
+              <View style={styles.lofiTextWrap}>
+                <Text style={styles.lofiTitle}>Play Background Lofi Tunes 🎧</Text>
+                <Text style={styles.lofiSub}>Cozy ambient beats to keep your mind locked in</Text>
+              </View>
+              <Switch
+                value={playLofi}
+                onValueChange={setPlayLofi}
+                trackColor={{ false: "#EAE5F8", true: "#B79CFF" }}
+                thumbColor={playLofi ? "#7D7AF2" : "#8A8A8A"}
+              />
+            </View>
+
+            {/* Start Button */}
+            <Pressable style={styles.startBtn} onPress={startSession}>
+              <FontAwesome name="play" size={16} color="#fff" />
+              <Text style={styles.startBtnText}>Start Focus Session ({selectedMinutes}m)</Text>
+            </Pressable>
+          </View>
+        ) : (
+          // ACTIVE FOCUS SESSION SCREEN
+          <View style={styles.activeCard}>
+            <View style={styles.mochiActiveWrap}>
+              <MochiBody mood={mood} baseColor={baseColor} size={230} hasLaptop={true} />
+            </View>
+
+            <View style={styles.statusBadge}>
+              <View style={styles.pulseDot} />
+              <Text style={styles.statusBadgeText}>
+                {isPaused ? "Session Paused ⏸️" : "Mochi is locked in & typing on laptop... 💻✨"}
+              </Text>
+            </View>
+
+            <Text style={styles.timerDisplay}>{mm}:{ss}</Text>
+
+            <View style={styles.speechBubble}>
+              <Text style={styles.speechText}>{line}</Text>
+            </View>
+
+            {playLofi && (
+              <Pressable style={styles.lofiActiveBadge} onPress={startLofiMusic}>
+                <FontAwesome name="music" size={12} color="#7D7AF2" />
+                <Text style={styles.lofiActiveText}>Playing: {currentTrack.title}</Text>
+                <FontAwesome name="random" size={12} color="#7D7AF2" style={{ marginLeft: 4 }} />
+              </Pressable>
+            )}
+
+            <View style={styles.activeBtnRow}>
+              <Pressable style={[styles.controlBtn, styles.pauseBtn]} onPress={togglePause}>
+                <FontAwesome name={isPaused ? "play" : "pause"} size={16} color="#fff" />
+                <Text style={styles.controlBtnText}>{isPaused ? "Resume" : "Pause"}</Text>
+              </Pressable>
+
+              <Pressable style={[styles.controlBtn, styles.stopBtn]} onPress={handleFinishEarlyClick}>
+                <FontAwesome name="stop" size={16} color="#fff" />
+                <Text style={styles.controlBtnText}>Finish Early</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Confirmation Modal when tapping Finish Early (Sad Mochi) */}
+      <Modal visible={showConfirmModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalCard}>
+            <View style={{ marginVertical: 8 }}>
+              <MochiBody mood="sad" baseColor={baseColor} size={150} />
+            </View>
+            <Text style={styles.confirmModalTitle}>Stop session early?</Text>
+            <Text style={styles.confirmModalSub}>
+              Are you sure? You're doing so awesome and we've come this far! Just a little bit more and we can cross the finish line together! 💙
+            </Text>
+
+            <Pressable style={styles.keepGoingBtn} onPress={handleKeepGoing}>
+              <FontAwesome name="play" size={16} color="#fff" />
+              <Text style={styles.keepGoingBtnText}>Keep Going! I can do this 🚀</Text>
+            </Pressable>
+
+            <Pressable style={styles.confirmEndBtn} onPress={handleConfirmEndEarly}>
+              <Text style={styles.confirmEndBtnText}>End Session Anyway 💔</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Celebration Modal on Completion (Cheerleader Mochi with Pom Poms) */}
+      <Modal visible={showCompletedModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.completedModalCard}>
+            <View style={{ marginVertical: 10 }}>
+              <MochiBody mood="excited" baseColor={baseColor} size={200} hasPomPoms={true} />
+            </View>
+
+            <Text style={styles.completedModalTitle}>YAY! YOU DID IT!! 🎉</Text>
+            <Text style={styles.completedModalSub}>
+              High five! You locked in, stayed focused, and crushed your goal! I'm so proud of you! 📣✨
+            </Text>
+
+            {/* Mochi's Laptop Research Wellness Card */}
+            {completedWellnessTip ? (
+              <View style={styles.researchCard}>
+                <View style={styles.researchCardHeader}>
+                  <FontAwesome name="laptop" size={13} color="#7D7AF2" />
+                  <Text style={styles.researchCardTitle}>
+                    While you focused, Mochi researched this for you:
+                  </Text>
+                </View>
+                <Text style={styles.researchCardText}>{completedWellnessTip}</Text>
+              </View>
+            ) : null}
+
+            <Pressable style={styles.celebrateBtn} onPress={() => setShowCompletedModal(false)}>
+              <FontAwesome name="trophy" size={18} color="#fff" />
+              <Text style={styles.celebrateBtnText}>Celebrate & Finish 🏆</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 14 },
-  timer: { fontSize: 38, fontWeight: "700", color: "#3A3A3A" },
-  line: { fontSize: 15, color: "#6A6A6A", textAlign: "center", minHeight: 44, paddingHorizontal: 16 },
-  btnRow: { flexDirection: "row", gap: 12, marginTop: 10, alignItems: "center" },
-  btn: {
-    backgroundColor: "#B79CFF",
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 28,
+  container: { flex: 1, backgroundColor: "#FFF8F0" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  btnStop: { backgroundColor: "#FFC2D1" },
-  btnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
-  resetBtn: {
+  backBtn: { padding: 8 },
+  headerTitle: {
+    fontFamily: Platform.OS === "ios" ? "BubblegumSans_400Regular" : "sans-serif-medium",
+    fontSize: 22,
+    color: "#3A3A3A",
+  },
+  scrollContent: { padding: 20, paddingBottom: 40 },
+
+  // Setup Card
+  setupCard: { alignItems: "center" },
+  bannerBox: {
+    backgroundColor: "#F0EAFF",
+    borderRadius: 20,
+    padding: 18,
+    width: "100%",
+    alignItems: "center",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2D8FD",
+  },
+  bannerTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#4A3A8A",
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 6,
+  },
+  bannerSub: { fontSize: 13, color: "#6A5A9A", textAlign: "center", lineHeight: 19 },
+
+  mochiPreviewWrap: { marginVertical: 10, alignItems: "center" },
+
+  sectionLabel: {
+    alignSelf: "flex-start",
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#3A3A3A",
+    marginTop: 14,
+    marginBottom: 10,
+  },
+  durationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, width: "100%" },
+  durationChip: {
+    flex: 1,
+    minWidth: "45%",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#EAE5F8",
+  },
+  durationChipSelected: {
+    backgroundColor: "#7D7AF2",
+    borderColor: "#7D7AF2",
+  },
+  durationChipTitle: { fontSize: 16, fontWeight: "700", color: "#3A3A3A" },
+  durationChipTitleSelected: { color: "#fff" },
+  durationChipSub: { fontSize: 12, color: "#8A8A8A", marginTop: 2 },
+  durationChipSubSelected: { color: "rgba(255,255,255,0.85)" },
+
+  // Pro-Tip Card
+  tipCard: {
+    flexDirection: "row",
+    gap: 12,
+    backgroundColor: "#FFF3E0",
+    borderRadius: 16,
+    padding: 16,
+    marginVertical: 16,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+    alignItems: "flex-start",
+  },
+  tipText: { flex: 1, fontSize: 13, color: "#7A4A00", lineHeight: 19 },
+
+  // Lofi Switch
+  lofiRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 16,
+    width: "100%",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#EAE5F8",
+  },
+  lofiTextWrap: { flex: 1, paddingRight: 10 },
+  lofiTitle: { fontSize: 15, fontWeight: "700", color: "#3A3A3A" },
+  lofiSub: { fontSize: 12, color: "#8A8A8A", marginTop: 2 },
+
+  startBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#7D7AF2",
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 28,
+    width: "100%",
+    shadowColor: "#7D7AF2",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  startBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+
+  // Active Focus Screen
+  activeCard: { alignItems: "center", width: "100%" },
+  mochiActiveWrap: { marginVertical: 10 },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     backgroundColor: "#EAE5F8",
-    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 14,
+  },
+  pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#52C41A" },
+  statusBadgeText: { fontSize: 13, fontWeight: "600", color: "#5A4A8A" },
+
+  timerDisplay: { fontSize: 52, fontWeight: "800", color: "#3A3A3A", letterSpacing: 1 },
+
+  speechBubble: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 16,
+    marginVertical: 14,
+    width: "100%",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#EAE5F8",
+  },
+  speechText: { fontSize: 15, color: "#4A4A4A", textAlign: "center", lineHeight: 22, fontWeight: "500" },
+
+  lofiActiveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F0EAFF",
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  lofiActiveText: { fontSize: 12, fontWeight: "600", color: "#7D7AF2" },
+
+  activeBtnRow: { flexDirection: "row", gap: 14, width: "100%" },
+  controlBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  pauseBtn: { backgroundColor: "#7D7AF2" },
+  stopBtn: { backgroundColor: "#FF6B8B" },
+  controlBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+
+  // Modals
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(20, 18, 38, 0.75)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  confirmModalCard: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 24,
+    alignItems: "center",
+    width: "100%",
+    maxWidth: 340,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  confirmModalTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#3A3A3A",
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  confirmModalSub: {
+    fontSize: 14,
+    color: "#6A6A6A",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  keepGoingBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#7D7AF2",
+    borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 20,
+    width: "100%",
+    marginBottom: 10,
   },
-  resetBtnText: { color: "#5A4A8A", fontWeight: "600", fontSize: 15 },
+  keepGoingBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  confirmEndBtn: { paddingVertical: 10 },
+  confirmEndBtnText: { color: "#FF6B8B", fontWeight: "600", fontSize: 14 },
+
+  completedModalCard: {
+    backgroundColor: "#fff",
+    borderRadius: 28,
+    padding: 26,
+    alignItems: "center",
+    width: "100%",
+    maxWidth: 350,
+    borderWidth: 2,
+    borderColor: "#E2D8FD",
+  },
+  completedModalTitle: {
+    fontFamily: Platform.OS === "ios" ? "BubblegumSans_400Regular" : "sans-serif-medium",
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#4A3A8A",
+    marginVertical: 10,
+    textAlign: "center",
+  },
+  completedModalSub: {
+    fontSize: 14,
+    color: "#6A6A6A",
+    textAlign: "center",
+    lineHeight: 21,
+    marginBottom: 16,
+  },
+
+  // Research Card inside Victory Modal
+  researchCard: {
+    backgroundColor: "#F0EAFF",
+    borderRadius: 16,
+    padding: 14,
+    width: "100%",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#E2D8FD",
+  },
+  researchCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
+  },
+  researchCardTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#5A4A8A",
+  },
+  researchCardText: {
+    fontSize: 13,
+    color: "#4A3A7A",
+    lineHeight: 19,
+  },
+
+  celebrateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#52C41A",
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    width: "100%",
+    shadowColor: "#52C41A",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  celebrateBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
 });

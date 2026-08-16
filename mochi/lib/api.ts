@@ -1,3 +1,6 @@
+import { Audio } from "expo-av";
+import * as Speech from "expo-speech";
+
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||
   "https://mochi-ecru.vercel.app";
@@ -5,6 +8,78 @@ export const API_BASE_URL =
 export type ChatMode = "mirror" | "rehearsal" | "beside";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
+
+let cachedVoiceId: string | undefined = undefined;
+
+async function getMochiVoiceIdentifier(): Promise<string | undefined> {
+  if (cachedVoiceId) return cachedVoiceId;
+  try {
+    const voices = await Speech.getAvailableVoicesAsync();
+    const enVoices = voices.filter((v) => v.language.startsWith("en"));
+    const sweetVoice =
+      enVoices.find(
+        (v) =>
+          v.name.includes("Samantha") ||
+          v.name.includes("Karen") ||
+          v.name.includes("Siri") ||
+          v.name.includes("Google") ||
+          v.quality === "Enhanced"
+      ) || enVoices[0];
+    if (sweetVoice) {
+      cachedVoiceId = sweetVoice.identifier;
+      return cachedVoiceId;
+    }
+  } catch (e) {
+    console.warn("Voice list fetch error:", e);
+  }
+  return undefined;
+}
+
+export async function speakMochiText(
+  text: string,
+  onFinish?: () => void,
+  soundRef?: React.MutableRefObject<Audio.Sound | null>
+): Promise<void> {
+  if (!text) return;
+  Speech.stop();
+
+  if (soundRef && soundRef.current) {
+    soundRef.current.unloadAsync().catch(() => {});
+    soundRef.current = null;
+  }
+
+  try {
+    // 1. Primary: ElevenLabs Warm Voice (Bella: EXAVITQu4vr4xnSDxMaL)
+    const audioBase64 = await synthesizeVoice(text, "EXAVITQu4vr4xnSDxMaL");
+    if (audioBase64) {
+      const uri = `data:audio/mpeg;base64,${audioBase64}`;
+      const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
+      if (soundRef) soundRef.current = sound;
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          if (onFinish) onFinish();
+        }
+      });
+      return;
+    }
+  } catch (e) {
+    console.warn("ElevenLabs TTS fallback to device voice:", e);
+  }
+
+  // 2. Fallback: Unified Device Voice (Samantha/Karen/Siri/Google) with soft pitch/rate
+  const voiceId = await getMochiVoiceIdentifier();
+  Speech.speak(text, {
+    voice: voiceId,
+    rate: 0.92,
+    pitch: 1.08,
+    onDone: () => {
+      if (onFinish) onFinish();
+    },
+    onError: () => {
+      if (onFinish) onFinish();
+    },
+  });
+}
 
 export async function transcribeAudio(audioBase64?: string): Promise<string> {
   try {
@@ -109,7 +184,19 @@ export async function sendToMochi(mode: ChatMode, messages: ChatMessage[]) {
   }
 
   if (mode === "rehearsal") {
-    return "I hear what you're saying. That definitely sounds complicated, but I'm ready to listen and work through this with you.";
+    if (
+      lastMsg.includes("rent") ||
+      lastMsg.includes("money") ||
+      lastMsg.includes("pay") ||
+      lastMsg.includes("defensive") ||
+      lastMsg.includes("unfair")
+    ) {
+      return "Why are you bringing this up right now? I feel like I'm already doing my part, and you're making a big deal out of it! [[mood:angry]]";
+    }
+    if (lastMsg.includes("tired") || lastMsg.includes("late") || lastMsg.includes("exhaust")) {
+      return "I'm way too drained to talk about this tonight. Can we please just drop it for now? [[mood:annoyed]]";
+    }
+    return "I hear what you're saying, but I'm feeling really overwhelmed by how we're approaching this conversation. [[mood:overwhelmed]]";
   }
 
   return "I'm quietly focusing right beside you. Take your time.";

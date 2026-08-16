@@ -16,6 +16,7 @@ import Svg, {
   RadialGradient,
   Stop,
   G,
+  Rect,
 } from "react-native-svg";
 import { MochiMood } from "../store/mochiStore";
 import { shiftColor } from "../lib/color";
@@ -81,10 +82,14 @@ export default function MochiBody({
   mood,
   baseColor,
   size = 200,
+  hasLaptop = false,
+  hasPomPoms = false,
 }: {
   mood: MochiMood;
   baseColor: string;
   size?: number;
+  hasLaptop?: boolean;
+  hasPomPoms?: boolean;
 }) {
   const breathe = useSharedValue(1);
   const moodColor = mood === "neutral" ? baseColor : (EXACT_MOOD_COLORS[mood] || baseColor);
@@ -106,12 +111,12 @@ export default function MochiBody({
     transform: [{ scale: breathe.value }],
   }));
 
-  const isWinking = mood === "glowing" || mood === "blooming";
-  const isSleeping = mood === "curled" || mood === "tired";
+  const isWinking = mood === "glowing" || mood === "excited";
+  const isSleeping = mood === "tired";
   const isWorried = ["anxious", "overwhelmed", "scared"].includes(mood);
   const isSad = ["sad", "deeply_sad", "lonely", "burnt_out", "numb", "wilting"].includes(mood);
   const isAngry = ["angry", "annoyed"].includes(mood);
-  const isCalmOrPeaceful = ["calm", "content", "at_peace", "tired", "curled"].includes(mood);
+  const isCalmOrPeaceful = ["calm", "content", "at_peace"].includes(mood);
 
   return (
     <Svg width={size} height={size} viewBox="0 0 200 200">
@@ -274,7 +279,7 @@ export default function MochiBody({
               <Circle cx="74" cy="88" r="4.5" fill="#FFFFFF" />
               <Circle cx="82" cy="98" r="2.2" fill="#FFFFFF" />
             </G>
-            {mood === "excited" || mood === "happy" || mood === "glowing" ? (
+            {isWinking ? (
               <G>
                 <Path
                   d="M112,95 C118,88 126,88 132,95"
@@ -347,6 +352,59 @@ export default function MochiBody({
               d="M94,107 C97,113 103,113 106,107 C103,104 97,104 94,107 Z"
               fill="#FF6B8B"
             />
+          </G>
+        )}
+
+        {/* Cute Working Laptop in front of Mochi when acting busy */}
+        {hasLaptop && (
+          <G>
+            {/* Screen Lid (Back) */}
+            <Rect x="64" y="116" width="72" height="42" rx="6" fill="#3A364F" />
+            {/* Screen Glow (Front) */}
+            <Rect x="67" y="119" width="66" height="36" rx="4" fill="#A4D4FF" opacity={0.9} />
+            {/* Code Lines on Screen */}
+            <Rect x="73" y="125" width="28" height="3" rx="1.5" fill="#7D7AF2" opacity={0.8} />
+            <Rect x="73" y="131" width="42" height="3" rx="1.5" fill="#FF8EA6" opacity={0.8} />
+            <Rect x="73" y="137" width="20" height="3" rx="1.5" fill="#52C41A" opacity={0.8} />
+            <Rect x="73" y="143" width="34" height="3" rx="1.5" fill="#FFA940" opacity={0.8} />
+            {/* Mini Logo Sticker on Back */}
+            <Circle cx="100" cy="137" r="4" fill="#FFFFFF" opacity={0.6} />
+
+            {/* Keyboard Base */}
+            <Path d="M50,158 L150,158 L158,170 L42,170 Z" fill="#29263A" />
+            {/* Trackpad */}
+            <Rect x="88" y="161" width="24" height="6" rx="2" fill="#4B4763" />
+
+            {/* Mochi's Paws on Keyboard */}
+            <Ellipse cx="68" cy="157" rx="9" ry="6" fill={lightColor} />
+            <Ellipse cx="132" cy="157" rx="9" ry="6" fill={lightColor} />
+          </G>
+        )}
+        {hasPomPoms && (
+          <G>
+            {/* Left Fluffy Pom-Pom Burst */}
+            <G>
+              <Circle cx="24" cy="74" r="16" fill="#FF6B8B" />
+              <Circle cx="18" cy="68" r="12" fill="#FFC2D1" />
+              <Circle cx="30" cy="80" r="11" fill="#FFD166" />
+              <Circle cx="24" cy="74" r="8" fill="#B79CFF" />
+              <Circle cx="34" cy="66" r="7" fill="#7D7AF2" />
+              <Circle cx="14" cy="80" r="6" fill="#FF8EA6" />
+            </G>
+            {/* Right Fluffy Pom-Pom Burst */}
+            <G>
+              <Circle cx="176" cy="74" r="16" fill="#FF6B8B" />
+              <Circle cx="182" cy="68" r="12" fill="#FFC2D1" />
+              <Circle cx="170" cy="80" r="11" fill="#FFD166" />
+              <Circle cx="176" cy="74" r="8" fill="#B79CFF" />
+              <Circle cx="166" cy="66" r="7" fill="#7D7AF2" />
+              <Circle cx="186" cy="80" r="6" fill="#FF8EA6" />
+            </G>
+            {/* Flying Cheer Sparkles */}
+            <Circle cx="12" cy="50" r="3" fill="#FFD166" opacity={0.9} />
+            <Circle cx="188" cy="50" r="3" fill="#FFD166" opacity={0.9} />
+            <Circle cx="38" cy="40" r="2.5" fill="#7D7AF2" opacity={0.8} />
+            <Circle cx="162" cy="40" r="2.5" fill="#7D7AF2" opacity={0.8} />
           </G>
         )}
       </AnimatedG>

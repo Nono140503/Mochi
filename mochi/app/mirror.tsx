@@ -11,12 +11,13 @@ import {
   ScrollView,
   Modal,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
 import { FontAwesome } from "@expo/vector-icons";
 import { useMochiStore, MochiMood } from "../store/mochiStore";
 import MochiBody from "../components/MochiBody";
-import { sendToMochi, extractMood, transcribeAudio, synthesizeVoice } from "../lib/api";
+import { sendToMochi, extractMood, transcribeAudio, synthesizeVoice, speakMochiText } from "../lib/api";
 
 const VALID_MOODS: MochiMood[] = [
   "neutral",
@@ -106,50 +107,18 @@ export default function Mirror() {
 
   const speakText = async (text: string, onFinish?: () => void) => {
     if (!text) return;
-    Speech.stop();
-    if (soundRef.current) {
-      soundRef.current.unloadAsync().catch(() => {});
-      soundRef.current = null;
-    }
-
     setIsSpeaking(true);
     if (voiceModeActive) setVoiceStatus("speaking");
 
-    try {
-      // 1. Try ElevenLabs Warm Voice (Bella: EXAVITQu4vr4xnSDxMaL)
-      const audioBase64 = await synthesizeVoice(text, "EXAVITQu4vr4xnSDxMaL");
-      if (audioBase64) {
-        const uri = `data:audio/mpeg;base64,${audioBase64}`;
-        const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
-        soundRef.current = sound;
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            setIsSpeaking(false);
-            if (voiceModeActive) setVoiceStatus("idle");
-            if (onFinish) onFinish();
-          }
-        });
-        return;
-      }
-    } catch (e) {
-      console.warn("ElevenLabs audio playback fallback to TTS:", e);
-    }
-
-    // 2. Device Voice Fallback
-    Speech.speak(text, {
-      voice: selectedVoice?.identifier,
-      rate: 0.92,
-      pitch: 1.08,
-      onDone: () => {
+    await speakMochiText(
+      text,
+      () => {
         setIsSpeaking(false);
         if (voiceModeActive) setVoiceStatus("idle");
         if (onFinish) onFinish();
       },
-      onError: () => {
-        setIsSpeaking(false);
-        if (voiceModeActive) setVoiceStatus("idle");
-      },
-    });
+      soundRef
+    );
   };
 
   // Open ChatGPT-style Voice Mode
@@ -398,12 +367,15 @@ export default function Mirror() {
 
       {/* CHATGPT ADVANCED VOICE MODE MODAL */}
       <Modal visible={voiceModeActive} animationType="slide" transparent={false}>
-        <View style={styles.voiceModalContainer}>
-          <Pressable style={styles.closeVoiceModalBtn} onPress={closeVoiceMode}>
-            <FontAwesome name="times" size={20} color="#3A3A3A" />
-          </Pressable>
+        <SafeAreaView style={styles.voiceModalContainer}>
+          <ScrollView
+            contentContainerStyle={styles.voiceModalScroll}
+            showsVerticalScrollIndicator={false}
+          >
+            <Pressable style={styles.closeVoiceModalBtn} onPress={closeVoiceMode}>
+              <FontAwesome name="times" size={20} color="#3A3A3A" />
+            </Pressable>
 
-          <View style={styles.voiceModalBody}>
             <View style={styles.voiceMochiWrap}>
               <MochiBody mood={mood} baseColor={baseColor} size={230} />
             </View>
@@ -445,8 +417,8 @@ export default function Mirror() {
                 {isRecording ? "Tap to finish speaking" : "Tap mic to talk to Mochi"}
               </Text>
             </View>
-          </View>
-        </View>
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
     </KeyboardAvoidingView>
   );
@@ -567,20 +539,16 @@ const styles = StyleSheet.create({
   voiceModalContainer: {
     flex: 1,
     backgroundColor: "#FFF8F0",
-    paddingTop: 50,
-    paddingHorizontal: 24,
+  },
+  voiceModalScroll: {
     alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 10,
+    paddingBottom: 40,
   },
   closeVoiceModalBtn: {
-    alignSelf: "flex-start",
-    padding: 8,
-  },
-  voiceModalBody: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 30,
-    width: "100%",
+    alignSelf: "flex-end",
+    padding: 12,
   },
   voiceMochiWrap: {
     marginVertical: 20,

@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+const Anthropic = require("@anthropic-ai/sdk");
 
 const SYSTEM_PROMPTS = {
   mirror:
@@ -21,15 +21,13 @@ const SYSTEM_PROMPTS = {
     "You are roleplaying as a specific person the user described to practice " +
     "a hard conversation. Stay fully in character: realistic tone, realistic " +
     "pushback, don't be artificially agreeable or artificially cruel. Keep " +
-    "responses conversational length (not essays). Do not break character " +
-    "unless the user explicitly asks you to stop." +
+    "responses conversational length (not essays). " +
+    "At the very end of your response, output a mood tag matching your persona's current emotion: " +
+    "happy, loved, content, calm, sad, deeply_sad, anxious, overwhelmed, angry, annoyed, lonely, tired, burnt_out, scared, numb, hopeful, excited, grateful, proud, at_peace. " +
+    "Format: [[mood:angry]] or [[mood:annoyed]] or [[mood:calm]] as the very last thing you write." +
     "\n\nSAFETY: 'Realistic pushback' means disagreement, defensiveness, or " +
     "firmness appropriate to the described relationship - it does NOT mean " +
-    "cruelty, insults, threats, or language that models abusive dynamics. " +
-    "If the user's description or the conversation drifts toward content " +
-    "that would reinforce self-blame or normalize mistreatment, soften the " +
-    "persona's response accordingly rather than escalating it, and if asked " +
-    "directly, gently remind the user this is a practice space.",
+    "cruelty, insults, threats, or language that models abusive dynamics.",
   beside:
     "You are Mochi, a gentle body-double companion sitting beside the user " +
     "while they focus. Generate ONE short present-tense line (under 15 words) " +
@@ -37,7 +35,7 @@ const SYSTEM_PROMPTS = {
     "just companionable narration.",
 };
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Use POST" });
   }

@@ -138,9 +138,16 @@ export default function Home() {
           style={styles.mirrorCard}
           onPress={() => router.push("/mirror" as any)}
         >
-          <View style={styles.mirrorLeft}>
-            <Text style={styles.mirrorTitle}>💭 MIRROR</Text>
-            <Text style={styles.mirrorSub}>Tell Mochi how you feel →</Text>
+          <View style={styles.mirrorContentRow}>
+            <Image
+              source={require("../assets/images/hand-mirror.png")}
+              style={styles.mirrorIconImage}
+              resizeMode="contain"
+            />
+            <View style={styles.mirrorColumn}>
+              <Text style={styles.mirrorTitle}>MIRROR</Text>
+              <Text style={styles.mirrorSub}>Tell Mochi how you feel →</Text>
+            </View>
           </View>
           <View style={styles.arrowCircle}>
             <FontAwesome name="chevron-right" size={14} color="#fff" />
@@ -153,7 +160,11 @@ export default function Home() {
             style={[styles.gridCard, { backgroundColor: "#F0EAFF" }]}
             onPress={() => router.push("/rehearsal" as any)}
           >
-            <Text style={styles.gridEmoji}>💬</Text>
+            <Image
+              source={require("../assets/images/talking.png")}
+              style={styles.gridIconImage}
+              resizeMode="contain"
+            />
             <Text style={styles.gridTitle}>REHEARSE</Text>
             <Text style={styles.gridSub}>Practice hard talks</Text>
           </Pressable>
@@ -162,7 +173,11 @@ export default function Home() {
             style={[styles.gridCard, { backgroundColor: "#FFF0F5" }]}
             onPress={() => router.push("/beside" as any)}
           >
-            <Text style={styles.gridEmoji}>🫶</Text>
+            <Image
+              source={require("../assets/images/holding-hands.png")}
+              style={styles.gridIconImage}
+              resizeMode="contain"
+            />
             <Text style={styles.gridTitle}>BESIDE YOU</Text>
             <Text style={styles.gridSub}>Body double focus</Text>
           </Pressable>
@@ -171,10 +186,8 @@ export default function Home() {
         {/* Card 3: Mochi's Meme of the Day (justmeme.wtf) */}
         <View style={styles.memeCard}>
           <View style={styles.memeHeader}>
-            <Text style={styles.memeHeaderTitle}>😂 MOCHI'S MEME OF DAY</Text>
-            <Pressable onPress={fetchMeme} disabled={loadingMeme}>
-              <Text style={styles.refreshMemeBtn}>🎲 Next</Text>
-            </Pressable>
+            <Text style={styles.memeHeaderTitle}>MOCHI'S MEME OF DAY</Text>
+            
           </View>
 
           {loadingMeme ? (
@@ -286,7 +299,7 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: "#7D7AF2",
     borderRadius: 20,
-    padding: 20,
+    padding: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -297,13 +310,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
-  mirrorLeft: { flex: 1 },
+  mirrorContentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    flex: 1,
+  },
+  mirrorIconImage: {
+    width: 44,
+    height: 44,
+  },
+  mirrorColumn: {
+    flexDirection: "column",
+    justifyContent: "center",
+  },
   mirrorTitle: {
     fontFamily: "BubblegumSans_400Regular",
     fontSize: 22,
     color: "#fff",
   },
-  mirrorSub: { fontSize: 14, color: "rgba(255,255,255,0.9)", marginTop: 2 },
+  mirrorSub: { fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 },
   arrowCircle: {
     width: 32,
     height: 32,
@@ -325,6 +351,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 16,
     alignItems: "flex-start",
+  },
+  gridIconImage: {
+    width: 36,
+    height: 36,
+    marginBottom: 8,
   },
   gridEmoji: { fontSize: 26, marginBottom: 6 },
   gridTitle: {
@@ -369,6 +400,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: "#F8F8F8",
     marginBottom: 10,
+    
   },
   memeTopText: {
     fontSize: 14,
